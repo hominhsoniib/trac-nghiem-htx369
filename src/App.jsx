@@ -1437,6 +1437,27 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   const openEdit = (q) => { setForm({ subjectId: q.subjectId, topicId: q.topicId, content: q.content, options: [...q.options], correctIndex: q.correctIndex, explanation: q.explanation, difficulty: q.difficulty }); setEditing(q.id); setTab("form"); };
   const remove = (id) => onChange(bank.filter((q) => q.id !== id));
 
+  const save = () => {
+    if (!form.content.trim()) {
+      alert("Vui lòng nhập nội dung câu hỏi!");
+      return;
+    }
+    if (editing) {
+      const updated = bank.map((q) => (q.id === editing ? { ...q, ...form } : q));
+      onChange(updated);
+    } else {
+      const newQ = {
+        id: "q_" + uid(),
+        ...form,
+        tags: [],
+      };
+      onChange([...bank, newQ]);
+    }
+    setEditing(null);
+    setForm(emptyForm);
+    setTab("list");
+  };
+
   const exportJSON = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bank, null, 2));
     const downloadAnchor = document.createElement("a");
@@ -1453,7 +1474,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
       if (!Array.isArray(arr)) throw new Error("not array");
       const valid = arr.filter((x) => x.content && Array.isArray(x.options) && x.options.length === 4 && typeof x.correctIndex === "number");
       const withIds = valid.map((x) => ({
-        id: "q" + uid(), subjectId: x.subjectId || subjects[0].id, topicId: x.topicId || topics[0].id,
+        id: "q_" + uid(), subjectId: x.subjectId || subjects[0].id, topicId: x.topicId || topics[0].id,
         content: x.content, options: x.options, correctIndex: x.correctIndex,
         explanation: x.explanation || "", difficulty: x.difficulty || "medium", tags: x.tags || [],
       }));
