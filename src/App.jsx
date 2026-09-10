@@ -1445,8 +1445,8 @@ const emptyMemberForm = {
   taxCode: "",
   representative: "",
   role: "Thành viên HTX 369",
-  status: "PASSED",
-  examScore: 85,
+  status: "STUDYING",
+  examScore: "",
 };
 
 function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
@@ -1497,7 +1497,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   const openNewMember = () => {
     setEditingMember(null);
     const autoCode = (memberForm.type === "phap_nhan" ? "PN-369" : "TV-369") + Math.floor(10 + Math.random() * 90);
-    setMemberForm({ ...emptyMemberForm, memberCode: autoCode });
+    setMemberForm({ ...emptyMemberForm, memberCode: autoCode, status: "STUDYING", examScore: "" });
     setShowMemberModal(true);
   };
 
@@ -1512,8 +1512,8 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
       taxCode: m.taxCode || "",
       representative: m.representative || "",
       role: m.role || "Thành viên HTX 369",
-      status: m.status || "PASSED",
-      examScore: m.examScore || 85,
+      status: m.status || "STUDYING",
+      examScore: m.status === "PASSED" ? (m.examScore || 85) : "",
     });
     setShowMemberModal(true);
   };
@@ -1536,9 +1536,20 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
     }
 
     const code = memberForm.memberCode.trim() || ((memberForm.type === "phap_nhan" ? "PN-369" : "TV-369") + Math.floor(10 + Math.random() * 90));
+    const isPassed = memberForm.status === "PASSED";
 
     if (editingMember) {
-      const updated = members.map((m) => (m.id === editingMember ? { ...m, ...memberForm, memberCode: code } : m));
+      const updated = members.map((m) =>
+        m.id === editingMember
+          ? {
+              ...m,
+              ...memberForm,
+              memberCode: code,
+              examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
+              certId: isPassed ? (m.certId || `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`) : null,
+            }
+          : m
+      );
       persistMembersList(updated);
     } else {
       const newMember = {
@@ -1547,9 +1558,9 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
         memberCode: code,
         name: memberForm.name.trim(),
         email: memberForm.email.trim(),
-        progressCount: memberForm.status === "PASSED" ? 8 : 4,
-        examScore: memberForm.status === "PASSED" ? (Number(memberForm.examScore) || 85) : null,
-        certId: memberForm.status === "PASSED" ? `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}` : null,
+        progressCount: isPassed ? 8 : 0,
+        examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
+        certId: isPassed ? `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}` : null,
         joinedDate: todayStr(),
       };
       persistMembersList([newMember, ...members]);
@@ -1801,10 +1812,10 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
 
               <div>
                 <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Kết quả thi sát hạch</label>
-                <select value={memberForm.status} onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value })}
+                <select value={memberForm.status} onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value, examScore: e.target.value === "PASSED" ? 85 : "" })}
                   className="w-full text-sm rounded-lg border px-2.5 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
+                  <option value="STUDYING">🟡 Chưa thi / Đang học tập</option>
                   <option value="PASSED">🟢 ĐẠT (Cấp Chứng Nhận)</option>
-                  <option value="STUDYING">🟡 Đang học tập</option>
                 </select>
               </div>
             </div>
