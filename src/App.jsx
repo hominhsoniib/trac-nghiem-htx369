@@ -3,7 +3,8 @@ import {
   Home, BookOpen, Zap, Target, XCircle, Bookmark, Settings, CheckCircle2,
   Circle, Flag, Clock, ChevronLeft, ChevronRight, TrendingUp, Award, Plus,
   Trash2, Pencil, Upload, Search, ArrowLeft, Sun, Moon, X, AlertTriangle,
-  User, LogIn, LogOut, ShieldCheck, Download, RefreshCw, FileCheck, Sparkles, Printer
+  User, LogIn, LogOut, ShieldCheck, Download, RefreshCw, FileCheck, Sparkles, Printer,
+  Users, UserPlus
 } from "lucide-react";
 import { loginUser, registerUser, fetchProfile, logoutUser } from "./services/api";
 
@@ -1427,6 +1428,14 @@ function BookmarksView({ t, bank, bookmarkIds, subjects, topics, onRemove, onPra
 /* ============================== ADMIN ============================== */
 const emptyForm = { subjectId: SUBJECTS[0].id, topicId: TOPICS[0].id, content: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", difficulty: "easy" };
 
+const DEFAULT_MEMBERS = [
+  { id: "m1", name: "Nguyễn Văn An", email: "thanhvien@htx369.vn", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
+  { id: "m2", name: "Hồ Minh Sơn", email: "admin@htx369.vn", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
+  { id: "m3", name: "Trần Thị Mai", email: "maitt@htx369.vn", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
+  { id: "m4", name: "Lê Văn Bình", email: "binhlv@htx369.vn", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
+  { id: "m5", name: "Phạm Quốc Cường", email: "cuongpq@htx369.vn", role: "Thành viên HTX 369", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
+];
+
 function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   const [tab, setTab] = useState("list");
   const [editing, setEditing] = useState(null);
@@ -1435,11 +1444,76 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
 
+  // Member Management State
+  const [members, setMembers] = useState(DEFAULT_MEMBERS);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [memberForm, setMemberForm] = useState({ name: "", email: "", role: "Thành viên HTX 369", status: "PASSED", examScore: 85 });
+
+  useEffect(() => {
+    (async () => {
+      const savedMembers = await storageGet("htx369_members_list", DEFAULT_MEMBERS);
+      setMembers(savedMembers);
+    })();
+  }, []);
+
+  const persistMembersList = (newList) => {
+    setMembers(newList);
+    storageSet("htx369_members_list", newList);
+  };
+
   const filtered = bank.filter((q) => q.content.toLowerCase().includes(search.toLowerCase()));
+  const filteredMembers = members.filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.email.toLowerCase().includes(memberSearch.toLowerCase()));
 
   const openNew = () => { setForm(emptyForm); setEditing(null); setTab("form"); };
   const openEdit = (q) => { setForm({ subjectId: q.subjectId, topicId: q.topicId, content: q.content, options: [...q.options], correctIndex: q.correctIndex, explanation: q.explanation, difficulty: q.difficulty }); setEditing(q.id); setTab("form"); };
   const remove = (id) => onChange(bank.filter((q) => q.id !== id));
+
+  // Member Action Handlers
+  const openNewMember = () => {
+    setEditingMember(null);
+    setMemberForm({ name: "", email: "", role: "Thành viên HTX 369", status: "PASSED", examScore: 85 });
+    setShowMemberModal(true);
+  };
+
+  const openEditMember = (m) => {
+    setEditingMember(m.id);
+    setMemberForm({ name: m.name, email: m.email, role: m.role, status: m.status, examScore: m.examScore || 85 });
+    setShowMemberModal(true);
+  };
+
+  const deleteMember = (id) => {
+    if (confirm("Bạn có chắc chắn muốn xóa thành viên này khỏi danh sách quản lý?")) {
+      persistMembersList(members.filter((m) => m.id !== id));
+    }
+  };
+
+  const saveMember = () => {
+    if (!memberForm.name.trim() || !memberForm.email.trim()) {
+      alert("Vui lòng nhập đầy đủ Họ tên và Email thành viên!");
+      return;
+    }
+
+    if (editingMember) {
+      const updated = members.map((m) => (m.id === editingMember ? { ...m, ...memberForm } : m));
+      persistMembersList(updated);
+    } else {
+      const newMember = {
+        id: "m_" + uid(),
+        name: memberForm.name.trim(),
+        email: memberForm.email.trim(),
+        role: memberForm.role,
+        progressCount: memberForm.status === "PASSED" ? 8 : 4,
+        examScore: memberForm.status === "PASSED" ? (Number(memberForm.examScore) || 85) : null,
+        status: memberForm.status,
+        certId: memberForm.status === "PASSED" ? `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}` : null,
+        joinedDate: todayStr(),
+      };
+      persistMembersList([newMember, ...members]);
+    }
+    setShowMemberModal(false);
+  };
 
   const save = () => {
     if (!form.content.trim()) {
@@ -1490,30 +1564,159 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
     }
   };
 
+  const passedMembersCount = members.filter((m) => m.status === "PASSED").length;
+
   return (
     <div className="max-w-3xl">
       <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">Quản trị hệ thống HTX 369</div>
-      <p className="text-sm mb-6" style={{ color: t.inkSoft }}>Quản lý ngân hàng 80+ câu hỏi HTX 369, nhập xuất dữ liệu và theo dõi thống kê tổng quan</p>
+      <p className="text-sm mb-6" style={{ color: t.inkSoft }}>Quản lý ngân hàng 80+ câu hỏi HTX 369, danh sách thành viên tham gia học tập & cấp chứng nhận sát hạch</p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <StatCard t={t} label="Tổng câu hỏi" value={bank.length} icon={BookOpen} />
-        <StatCard t={t} label="Lượt đã làm" value={progress.totalAnswered} icon={TrendingUp} />
-        <StatCard t={t} label="Điểm TB" value={(progress.totalAnswered ? Math.round((progress.totalCorrect / progress.totalAnswered) * 100) : 0) + "%"} icon={Award} />
+        <StatCard t={t} label="Thành viên HTX" value={members.length} icon={Users} />
+        <StatCard t={t} label="Đã ĐẠT Sát Hạch" value={passedMembersCount} icon={ShieldCheck} />
+        <StatCard t={t} label="Tổng câu hỏi đề" value={bank.length} icon={BookOpen} />
       </div>
 
-      <div className="flex justify-between items-center mb-5 border-b" style={{ borderColor: t.border }}>
+      <div className="flex justify-between items-center mb-5 border-b overflow-x-auto" style={{ borderColor: t.border }}>
         <div className="flex gap-2">
-          {[["list", "Danh sách câu hỏi"], ["form", editing ? "Sửa câu hỏi" : "Thêm câu hỏi mới"], ["import", "Nhập / Xuất JSON"]].map(([id, label]) => (
+          {[["list", "Danh sách câu hỏi"], ["members", `Thành viên HTX (${members.length})`], ["form", editing ? "Sửa câu hỏi" : "Thêm câu hỏi"], ["import", "Nhập / Xuất JSON"]].map(([id, label]) => (
             <button key={id} onClick={() => { setTab(id); if (id === "form" && !editing) setForm(emptyForm); }}
-              className="px-3 py-2 text-sm font-medium transition-all" style={{ color: tab === id ? t.accent : t.inkSoft, borderBottom: tab === id ? `2px solid ${t.accent}` : "2px solid transparent" }}>
+              className="px-3 py-2 text-sm font-medium transition-all whitespace-nowrap" style={{ color: tab === id ? t.accent : t.inkSoft, borderBottom: tab === id ? `2px solid ${t.accent}` : "2px solid transparent" }}>
               {label}
             </button>
           ))}
         </div>
-        <button onClick={exportJSON} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border font-medium mb-1" style={{ borderColor: t.border, color: t.ink }}>
+        <button onClick={exportJSON} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border font-medium mb-1 shrink-0" style={{ borderColor: t.border, color: t.ink }}>
           <Download size={13} /> Xuất JSON
         </button>
       </div>
+
+      {tab === "members" && (
+        <div>
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border" style={{ borderColor: t.border, background: t.surface }}>
+              <Search size={14} color={t.inkSoft} />
+              <input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="Tìm theo tên hoặc email thành viên HTX…" className="flex-1 py-2 text-sm bg-transparent outline-none" style={{ color: t.ink }} />
+            </div>
+            <button onClick={openNewMember} className="flex items-center gap-1 px-3.5 py-2 rounded-lg text-sm font-semibold text-white shadow-sm shrink-0" style={{ background: t.accent }}>
+              <UserPlus size={14} /> Thêm thành viên HTX
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            {filteredMembers.map((m) => (
+              <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3 shadow-sm transition-all hover:border-black/20" style={{ borderColor: t.border, background: t.surface }}>
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-sm" style={{ background: m.role.includes("Quản") ? t.navy : t.accent }}>
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="text-sm font-bold truncate" style={{ color: t.ink }}>{m.name}</div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: t.accentSoft, color: t.accent }}>
+                        {m.role}
+                      </span>
+                    </div>
+                    <div className="text-xs mt-0.5 truncate" style={{ color: t.inkSoft }}>{m.email} · Tham gia: {m.joinedDate}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right hidden sm:block">
+                    {m.status === "PASSED" ? (
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: t.correctSoft, color: t.correct }}>
+                          <CheckCircle2 size={12} /> ĐẠT ({m.examScore}%)
+                        </span>
+                        <div className="text-[10px] mt-0.5" style={{ color: t.inkSoft }}>Mã CC: {m.certId}</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full" style={{ background: t.accentSoft, color: t.gold }}>
+                          🟡 Đang học ({m.progressCount}/8 bài)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1">
+                    <button onClick={() => openEditMember(m)} title="Sửa thông tin thành viên" className="p-2 rounded-lg border hover:bg-black/5" style={{ borderColor: t.border }}>
+                      <Pencil size={13} color={t.inkSoft} />
+                    </button>
+                    <button onClick={() => deleteMember(m.id)} title="Xóa thành viên" className="p-2 rounded-lg border hover:bg-black/5" style={{ borderColor: t.border }}>
+                      <Trash2 size={13} color={t.incorrect} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filteredMembers.length === 0 && (
+              <div className="text-center py-12 rounded-xl border text-sm" style={{ borderColor: t.border, background: t.surface, color: t.inkSoft }}>
+                Không tìm thấy thành viên HTX nào phù hợp.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showMemberModal && (
+        <Modal t={t} onClose={() => setShowMemberModal(false)}>
+          <div className="flex justify-between items-center mb-4">
+            <div style={{ fontFamily: serif }} className="text-xl font-bold">
+              {editingMember ? "Sửa thông tin thành viên HTX" : "Thêm thành viên HTX 369 mới"}
+            </div>
+            <button onClick={() => setShowMemberModal(false)} className="p-1 rounded hover:bg-black/5"><X size={16} color={t.inkSoft} /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Họ và tên thành viên</label>
+              <input type="text" required value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} placeholder="Ví dụ: Nguyễn Văn A"
+                className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Email đăng nhập</label>
+              <input type="email" required value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} placeholder="thanhvien@htx369.vn"
+                className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Chức vụ / Vai trò</label>
+                <select value={memberForm.role} onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
+                  className="w-full text-sm rounded-lg border px-2.5 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
+                  <option value="Thành viên HTX 369">Thành viên HTX 369</option>
+                  <option value="Ban Quản Trị">Ban Quản Trị</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Kết quả thi sát hạch</label>
+                <select value={memberForm.status} onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value })}
+                  className="w-full text-sm rounded-lg border px-2.5 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
+                  <option value="PASSED">🟢 ĐẠT (Cấp Chứng Nhận)</option>
+                  <option value="STUDYING">🟡 Đang học tập</option>
+                </select>
+              </div>
+            </div>
+
+            {memberForm.status === "PASSED" && (
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Điểm sát hạch (%)</label>
+                <input type="number" min="70" max="100" value={memberForm.examScore} onChange={(e) => setMemberForm({ ...memberForm, examScore: e.target.value })}
+                  className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setShowMemberModal(false)} className="flex-1 py-2 rounded-lg border text-sm font-medium" style={{ borderColor: t.border, color: t.ink }}>Hủy</button>
+              <button onClick={saveMember} className="flex-1 py-2 rounded-lg text-sm font-semibold text-white shadow-sm" style={{ background: t.accent }}>Lưu thành viên</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {tab === "list" && (
         <div>
