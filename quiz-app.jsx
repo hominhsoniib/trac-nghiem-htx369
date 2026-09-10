@@ -1429,12 +1429,28 @@ function BookmarksView({ t, bank, bookmarkIds, subjects, topics, onRemove, onPra
 const emptyForm = { subjectId: SUBJECTS[0].id, topicId: TOPICS[0].id, content: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", difficulty: "easy" };
 
 const DEFAULT_MEMBERS = [
-  { id: "m1", memberCode: "TV-36901", type: "ca_nhan", name: "Nguyễn Văn An", phone: "0988 123 456", email: "thanhvien@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
-  { id: "m2", memberCode: "TV-36902", type: "ca_nhan", name: "Hồ Minh Sơn", phone: "0912 345 678", email: "admin@htx369.vn", taxCode: "", representative: "", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
-  { id: "m3", memberCode: "PN-36903", type: "phap_nhan", name: "HTX Nông Nghiệp Bền Vững 369", phone: "024 3888 999", email: "contact@nongnghiep369.vn", taxCode: "0109876543", representative: "Trần Thị Mai", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
-  { id: "m4", memberCode: "TV-36904", type: "ca_nhan", name: "Lê Văn Bình", phone: "0903 456 789", email: "binhlv@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
-  { id: "m5", memberCode: "PN-36905", type: "phap_nhan", name: "Công ty Dược Liệu Hữu Cơ 369", phone: "028 7300 123", email: "cuongpq@duoclieu369.vn", taxCode: "0316543210", representative: "Phạm Quốc Cường", role: "Nhà sản xuất", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
+  { id: "m1", memberCode: "TV-00001", type: "ca_nhan", name: "Nguyễn Văn An", phone: "0988 123 456", email: "thanhvien@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
+  { id: "m2", memberCode: "TV-00002", type: "ca_nhan", name: "Hồ Minh Sơn", phone: "0912 345 678", email: "admin@htx369.vn", taxCode: "", representative: "", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
+  { id: "m3", memberCode: "PN-00001", type: "phap_nhan", name: "HTX Nông Nghiệp Bền Vững 369", phone: "024 3888 999", email: "contact@nongnghiep369.vn", taxCode: "0109876543", representative: "Trần Thị Mai", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
+  { id: "m4", memberCode: "TV-00003", type: "ca_nhan", name: "Lê Văn Bình", phone: "0903 456 789", email: "binhlv@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
+  { id: "m5", memberCode: "PN-00002", type: "phap_nhan", name: "Công ty Dược Liệu Hữu Cơ 369", phone: "028 7300 123", email: "cuongpq@duoclieu369.vn", taxCode: "0316543210", representative: "Phạm Quốc Cường", role: "Nhà sản xuất", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
 ];
+
+const getNextMemberCode = (membersList, type) => {
+  const prefix = type === "phap_nhan" ? "PN-" : "TV-";
+  let maxNum = 0;
+  (membersList || []).forEach((m) => {
+    if (m.memberCode && m.memberCode.startsWith(prefix)) {
+      const numPart = m.memberCode.replace(prefix, "").replace(/\D/g, "");
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `${prefix}${String(nextNum).padStart(5, "0")}`;
+};
 
 const emptyMemberForm = {
   memberCode: "",
@@ -1496,15 +1512,24 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   // Member Action Handlers
   const openNewMember = () => {
     setEditingMember(null);
-    const autoCode = (memberForm.type === "phap_nhan" ? "PN-369" : "TV-369") + Math.floor(10 + Math.random() * 90);
-    setMemberForm({ ...emptyMemberForm, memberCode: autoCode, status: "STUDYING", examScore: "" });
+    const autoCode = getNextMemberCode(members, "ca_nhan");
+    setMemberForm({ ...emptyMemberForm, type: "ca_nhan", memberCode: autoCode, status: "STUDYING", examScore: "" });
     setShowMemberModal(true);
+  };
+
+  const handleTypeSwitch = (newType) => {
+    const autoCode = getNextMemberCode(members, newType);
+    setMemberForm((prev) => ({
+      ...prev,
+      type: newType,
+      memberCode: autoCode,
+    }));
   };
 
   const openEditMember = (m) => {
     setEditingMember(m.id);
     setMemberForm({
-      memberCode: m.memberCode || `TV-369${Math.floor(10 + Math.random() * 90)}`,
+      memberCode: m.memberCode || getNextMemberCode(members, m.type || "ca_nhan"),
       type: m.type || "ca_nhan",
       name: m.name || "",
       phone: m.phone || "",
@@ -1535,7 +1560,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
       return;
     }
 
-    const code = memberForm.memberCode.trim() || ((memberForm.type === "phap_nhan" ? "PN-369" : "TV-369") + Math.floor(10 + Math.random() * 90));
+    const code = memberForm.memberCode.trim() || getNextMemberCode(members, memberForm.type);
     const isPassed = memberForm.status === "PASSED";
 
     if (editingMember) {
@@ -1743,12 +1768,12 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Loại hình thành viên</label>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMemberForm({ ...memberForm, type: "ca_nhan" })}
+                <button type="button" onClick={() => handleTypeSwitch("ca_nhan")}
                   className="py-1.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                   style={{ borderColor: memberForm.type === "ca_nhan" ? t.accent : t.border, background: memberForm.type === "ca_nhan" ? t.accentSoft : t.bg, color: memberForm.type === "ca_nhan" ? t.accent : t.inkSoft }}>
                   👤 Cá nhân
                 </button>
-                <button type="button" onClick={() => setMemberForm({ ...memberForm, type: "phap_nhan" })}
+                <button type="button" onClick={() => handleTypeSwitch("phap_nhan")}
                   className="py-1.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                   style={{ borderColor: memberForm.type === "phap_nhan" ? t.accent : t.border, background: memberForm.type === "phap_nhan" ? t.accentSoft : t.bg, color: memberForm.type === "phap_nhan" ? t.accent : t.inkSoft }}>
                   🏢 Pháp nhân / Doanh nghiệp
