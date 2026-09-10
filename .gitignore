@@ -24,3 +24,5 @@ Thumbs.db
 # Sub-projects node_modules
 onluyen-auth-service/auth-service/node_modules
 onluyen-auth-service/auth-service/dist
+
+.vercel

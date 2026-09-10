@@ -3,7 +3,7 @@ import {
   Home, BookOpen, Zap, Target, XCircle, Bookmark, Settings, CheckCircle2,
   Circle, Flag, Clock, ChevronLeft, ChevronRight, TrendingUp, Award, Plus,
   Trash2, Pencil, Upload, Search, ArrowLeft, Sun, Moon, X, AlertTriangle,
-  User, LogIn, LogOut, ShieldCheck, Download, RefreshCw
+  User, LogIn, LogOut, ShieldCheck, Download, RefreshCw, FileCheck, Sparkles, Printer
 } from "lucide-react";
 import { loginUser, registerUser, fetchProfile, logoutUser } from "./services/api";
 
@@ -28,7 +28,7 @@ const sans = 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif';
 
 /* ============================== SEED DATA ============================== */
 const SUBJECTS = [
-  { id: "htx369", name: "Chương trình Đào tạo HTX 369", accent: "#2F6F62" },
+  { id: "htx369", name: "Bộ Đề Thi Trắc Nghiệm HTX 369 (80 Câu Sát Hạch)", accent: "#2F6F62" },
   { id: "toan", name: "Toán học", accent: "#2F6F62" },
   { id: "anh", name: "Tiếng Anh", accent: "#3B5BA5" },
   { id: "su", name: "Lịch sử Việt Nam", accent: "#C1483C" },
@@ -386,6 +386,7 @@ export default function App() {
   const [selTopic, setSelTopic] = useState(null);
   const [quizSetup, setQuizSetup] = useState(null); // {mode, questions, timeLimit}
   const [lastResult, setLastResult] = useState(null);
+  const [showCertificate, setShowCertificate] = useState(null);
 
   const [bank, setBank] = useState(SEED_QUESTIONS);
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
@@ -450,6 +451,11 @@ export default function App() {
     setView("quiz");
   };
 
+  const startFullHTX369Exam = () => {
+    const htxQs = bank.filter((q) => q.subjectId === "htx369");
+    startQuiz("exam", htxQs, { subjectId: "htx369", timeLimit: 60 * 60 });
+  };
+
   const handleLogout = async () => {
     await logoutUser();
     setUser(null);
@@ -460,7 +466,7 @@ export default function App() {
       <div style={{ background: t.bg, color: t.ink, fontFamily: sans }} className="w-full h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="animate-spin" size={28} color={t.accent} />
-          <div className="text-sm font-medium" style={{ color: t.inkSoft }}>Đang tải dữ liệu học tập Ôn Luyện…</div>
+          <div className="text-sm font-medium" style={{ color: t.inkSoft }}>Đang tải Bộ đề thi trắc nghiệm HTX 369…</div>
         </div>
       </div>
     );
@@ -495,8 +501,17 @@ export default function App() {
 
         {view === "dashboard" && (
           <Dashboard t={t} progress={progress} bank={bank} wrongCount={wrongIds.length} bookmarkCount={bookmarkIds.length}
-            onQuickStart={() => setView("subjects-quick")} onPractice={() => setView("subjects")}
-            onExam={() => setView("subjects-exam")} onWrong={() => setView("wrong")} user={user} onOpenAuth={() => setShowAuthModal(true)} />
+            onQuickStart={() => {
+              const htx = bank.filter((q) => q.subjectId === "htx369");
+              startQuiz("quick", shuffle(htx).slice(0, 20), { subjectId: "htx369" });
+            }}
+            onPractice={() => {
+              const htxSub = SUBJECTS.find((s) => s.id === "htx369");
+              setSelSubject(htxSub);
+              setView("topics");
+            }}
+            onExam={startFullHTX369Exam}
+            onWrong={() => setView("wrong")} user={user} onOpenAuth={() => setShowAuthModal(true)} />
         )}
         {(view === "subjects" || view === "subjects-quick" || view === "subjects-exam") && (
           <SubjectPicker t={t} subjects={SUBJECTS} bank={bank}
@@ -536,8 +551,9 @@ export default function App() {
             onExit={() => setView("dashboard")} onFinish={finishQuiz} />
         )}
         {view === "results" && lastResult && (
-          <ResultsView t={t} result={lastResult} onHome={() => setView("dashboard")}
+          <ResultsView t={t} result={lastResult} user={user} onHome={() => setView("dashboard")}
             onReviewWrong={() => setView("wrong")}
+            onOpenCert={() => setShowCertificate(lastResult)}
             onRetakeWrong={() => {
               const qs = lastResult.perQuestion.filter((x) => x.correct === false).map((x) => x.question);
               if (qs.length) startQuiz("practice", shuffle(qs), { subjectId: lastResult.subjectId });
@@ -562,6 +578,10 @@ export default function App() {
       {showAuthModal && (
         <AuthModal t={t} onClose={() => setShowAuthModal(false)} onAuthSuccess={(u) => { setUser(u); setShowAuthModal(false); }} />
       )}
+
+      {showCertificate && (
+        <CertificateModal t={t} result={showCertificate} user={user} onClose={() => setShowCertificate(null)} />
+      )}
     </div>
   );
 }
@@ -569,12 +589,12 @@ export default function App() {
 /* ============================== NAV ============================== */
 const NAV_ITEMS = [
   { id: "dashboard", label: "Trang chủ", icon: Home },
-  { id: "subjects", label: "Luyện tập", icon: BookOpen },
+  { id: "subjects", label: "Ôn Luyện 369", icon: BookOpen },
   { id: "subjects-quick", label: "Luyện nhanh", icon: Zap },
-  { id: "subjects-exam", label: "Thi thử", icon: Target },
+  { id: "subjects-exam", label: "Thi sát hạch", icon: Target },
   { id: "wrong", label: "Câu hỏi sai", icon: XCircle },
   { id: "bookmarks", label: "Đã lưu", icon: Bookmark },
-  { id: "admin", label: "Quản trị", icon: Settings },
+  { id: "admin", label: "Quản trị đề", icon: Settings },
 ];
 
 function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout }) {
@@ -583,7 +603,7 @@ function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout }
     <aside className="hidden md:flex md:flex-col w-64 shrink-0 border-r min-h-screen" style={{ borderColor: t.border, background: t.surface }}>
       <div className="px-6 py-6 border-b" style={{ borderColor: t.border }}>
         <div style={{ fontFamily: serif, color: t.ink }} className="text-2xl font-bold">Ôn<span style={{ color: t.accent }}>Luyện 369</span></div>
-        <div className="text-xs mt-1" style={{ color: t.inkSoft }}>Nền tảng thi trắc nghiệm thông minh</div>
+        <div className="text-xs mt-1" style={{ color: t.inkSoft }}>Hệ thống Thi Trắc Nghiệm HTX 369</div>
       </div>
 
       {/* User Section */}
@@ -595,7 +615,7 @@ function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout }
                 {(user.name || user.email)[0].toUpperCase()}
               </div>
               <div className="truncate">
-                <div className="text-xs font-semibold truncate" style={{ color: t.ink }}>{user.name || "Thành viên"}</div>
+                <div className="text-xs font-semibold truncate" style={{ color: t.ink }}>{user.name || "Học viên HTX 369"}</div>
                 <div className="text-[10px] truncate" style={{ color: t.inkSoft }}>{user.email}</div>
               </div>
             </div>
@@ -656,36 +676,46 @@ function MobileTabs({ t, view, setView }) {
 /* ============================== DASHBOARD ============================== */
 function Dashboard({ t, progress, bank, wrongCount, bookmarkCount, onQuickStart, onPractice, onExam, onWrong, user, onOpenAuth }) {
   const acc = progress.totalAnswered ? Math.round((progress.totalCorrect / progress.totalAnswered) * 100) : 0;
+  const htxCount = bank.filter((q) => q.subjectId === "htx369").length;
+
   return (
     <div className="max-w-4xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <div style={{ fontFamily: serif }} className="text-3xl font-bold mb-1">
-            {user ? `Chào ${user.name || 'bạn'} 👋` : "Chào mừng đến với Ôn Luyện 369 👋"}
-          </div>
-          <p className="text-sm" style={{ color: t.inkSoft }}>
-            {bank.length} câu hỏi sẵn sàng trong {SUBJECTS.length} môn học (bao gồm 8 bài học HTX 369).
+      {/* Hero Banner HTX 369 */}
+      <div className="rounded-2xl p-6 sm:p-8 mb-8 text-white shadow-md relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1E4D42 0%, #2F6F62 50%, #1B3832 100%)" }}>
+        <div className="relative z-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm mb-3">
+            <Sparkles size={14} className="text-yellow-300" /> BỘ ĐỀ THI SÁT HẠCH CHUẨN 2026
+          </span>
+          <h1 style={{ fontFamily: serif }} className="text-2xl sm:text-3xl font-bold mb-2">
+            Chương Trình Đào Tạo HTX 369
+          </h1>
+          <p className="text-xs sm:text-sm text-emerald-100 max-w-xl mb-6 leading-relaxed">
+            Hệ thống bộ đề thi trắc nghiệm gồm <strong>80 câu hỏi sát hạch</strong> bao gồm trọn bộ 8 Bài học: Mục đích tối thượng, Tam giác mục tiêu, Tam giác kinh tế, Nhà kiến tạo hệ sinh thái, Cơ chế thưởng & Credit 369.
           </p>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={onExam} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-[#2F6F62] font-bold text-sm shadow-md hover:bg-emerald-50 transition-all active:scale-95">
+              <Target size={18} /> Thi Sát Hạch Toàn Bộ (80 Câu)
+            </button>
+            <button onClick={onPractice} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white font-semibold text-sm border border-white/30 backdrop-blur-sm transition-all">
+              <BookOpen size={18} /> Ôn Luyện 8 Bài Học
+            </button>
+          </div>
         </div>
-        {!user && (
-          <button onClick={onOpenAuth} className="self-start sm:self-auto flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-lg font-semibold border transition-all" style={{ borderColor: t.accent, color: t.accent, background: t.accentSoft }}>
-            <ShieldCheck size={15} /> Đăng nhập lưu tiến trình
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <StatCard t={t} label="Đã làm" value={progress.totalAnswered} icon={BookOpen} />
+        <StatCard t={t} label="Câu đã làm" value={progress.totalAnswered} icon={BookOpen} />
         <StatCard t={t} label="Trả lời đúng" value={progress.totalCorrect} icon={CheckCircle2} />
         <StatCard t={t} label="Tỷ lệ chính xác" value={acc + "%"} icon={TrendingUp} />
-        <StatCard t={t} label="Ngày liên tiếp" value={progress.streak} icon={Award} />
+        <StatCard t={t} label="Chuỗi ngày học" value={progress.streak + " ngày"} icon={Award} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-        <ActionCard t={t} title="Luyện tập theo môn" desc="Luyện tập theo từng chủ đề HTX 369, xem đáp án & giải thích ngay" icon={BookOpen} onClick={onPractice} />
-        <ActionCard t={t} title="Luyện tập nhanh" desc="Tùy chọn số lượng câu, làm bài ngẫu nhiên" icon={Zap} onClick={onQuickStart} />
-        <ActionCard t={t} title="Thi thử bấm giờ" desc="Có thời gian đếm ngược, mô phỏng phòng thi thật" icon={Target} onClick={onExam} />
-        <ActionCard t={t} title={`Câu hỏi làm sai (${wrongCount})`} desc="Ôn lại những câu bạn từng chọn chưa đúng" icon={XCircle} onClick={onWrong} />
+        <ActionCard t={t} title="Ôn luyện theo bài (Bài 1 -> 8)" desc="Xem đáp án & giải thích chi tiết cho trọn bộ 80 câu HTX 369" icon={BookOpen} onClick={onPractice} />
+        <ActionCard t={t} title="Luyện tập nhanh (20 câu)" desc="Rèn luyện phản xạ ngẫu nhiên từ ngân hàng 80 câu" icon={Zap} onClick={onQuickStart} />
+        <ActionCard t={t} title="Thi sát hạch bấm giờ (60 phút)" desc="Mô phỏng thi thực tế 80 câu, tính % điểm và cấp Giấy chứng nhận" icon={Target} onClick={onExam} />
+        <ActionCard t={t} title={`Ngân hàng câu sai (${wrongCount})`} desc="Ôn lại những câu bạn từng chọn chưa chính xác" icon={XCircle} onClick={onWrong} />
       </div>
 
       {progress.history.length > 0 && (
@@ -702,7 +732,7 @@ function Dashboard({ t, progress, bank, wrongCount, bookmarkCount, onQuickStart,
                 <div key={h.id} className="flex items-center justify-between px-4 py-3" style={{ borderTop: i ? `1px solid ${t.border}` : "none" }}>
                   <div>
                     <div className="text-sm font-medium" style={{ color: t.ink }}>
-                      {s ? s.name : "Tổng hợp"} · <span style={{ color: t.inkSoft }} className="text-xs">{h.mode === "exam" ? "Thi thử" : h.mode === "quick" ? "Luyện nhanh" : "Luyện tập"}</span>
+                      {s ? s.name : "HTX 369"} · <span style={{ color: t.inkSoft }} className="text-xs">{h.mode === "exam" ? "Thi sát hạch" : h.mode === "quick" ? "Luyện nhanh" : "Luyện tập"}</span>
                     </div>
                     <div className="text-xs" style={{ color: t.inkSoft }}>{h.date}</div>
                   </div>
@@ -755,7 +785,7 @@ function SubjectPicker({ t, subjects, bank, onBack, onPick }) {
   return (
     <div className="max-w-3xl">
       <BackRow t={t} onBack={onBack} label="Trang chủ" />
-      <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-5">Chọn môn học / Chương trình</div>
+      <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-5">Chọn chương trình học / Đề thi</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {subjects.map((s) => {
           const count = bank.filter((q) => q.subjectId === s.id).length;
@@ -764,7 +794,7 @@ function SubjectPicker({ t, subjects, bank, onBack, onPick }) {
               style={{ borderColor: t.border, background: t.surface }}>
               <div className="w-3 h-3 rounded-full mb-3" style={{ background: s.accent }} />
               <div className="text-base font-semibold" style={{ color: t.ink }}>{s.name}</div>
-              <div className="text-xs mt-1" style={{ color: t.inkSoft }}>{count} câu hỏi sẵn sàng</div>
+              <div className="text-xs mt-1" style={{ color: t.inkSoft }}>{count} câu hỏi trắc nghiệm</div>
             </button>
           );
         })}
@@ -776,9 +806,9 @@ function SubjectPicker({ t, subjects, bank, onBack, onPick }) {
 function TopicPicker({ t, subject, topics, bank, onBack, onPick }) {
   return (
     <div className="max-w-3xl">
-      <BackRow t={t} onBack={onBack} label="Chọn môn khác" />
+      <BackRow t={t} onBack={onBack} label="Chọn chương trình khác" />
       <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">{subject.name}</div>
-      <p className="text-sm mb-5" style={{ color: t.inkSoft }}>Chọn một bài học / chủ đề để bắt đầu ôn luyện</p>
+      <p className="text-sm mb-5" style={{ color: t.inkSoft }}>Chọn bài học để bắt đầu ôn luyện chi tiết</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {topics.map((tp) => {
           const count = bank.filter((q) => q.topicId === tp.id).length;
@@ -786,7 +816,7 @@ function TopicPicker({ t, subject, topics, bank, onBack, onPick }) {
             <button key={tp.id} onClick={() => onPick(tp)} className="text-left rounded-xl border p-5 hover:-translate-y-0.5 transition-all hover:shadow-sm"
               style={{ borderColor: t.border, background: t.surface }}>
               <div className="text-sm font-semibold" style={{ color: t.ink }}>{tp.name}</div>
-              <div className="text-xs mt-1" style={{ color: t.inkSoft }}>{count} câu hỏi · Xem đáp án & giải thích lập tức</div>
+              <div className="text-xs mt-1" style={{ color: t.inkSoft }}>{count} câu hỏi · Xem giải thích chi tiết lập tức</div>
             </button>
           );
         })}
@@ -799,7 +829,7 @@ function QuickSetup({ t, subject, onBack, onStart }) {
   const [count, setCount] = useState(20);
   return (
     <div className="max-w-md">
-      <BackRow t={t} onBack={onBack} label="Chọn môn khác" />
+      <BackRow t={t} onBack={onBack} label="Chọn bài khác" />
       <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">Luyện tập nhanh</div>
       <p className="text-sm mb-6" style={{ color: t.inkSoft }}>{subject.name} · Chọn số lượng câu hỏi</p>
       <div className="grid grid-cols-4 gap-2 mb-6">
@@ -818,36 +848,36 @@ function QuickSetup({ t, subject, onBack, onStart }) {
 }
 
 function ExamSetup({ t, subject, onBack, onStart }) {
-  const [count, setCount] = useState(20);
-  const [minutes, setMinutes] = useState(20);
+  const [count, setCount] = useState(80);
+  const [minutes, setMinutes] = useState(60);
   return (
     <div className="max-w-md">
-      <BackRow t={t} onBack={onBack} label="Chọn môn khác" />
-      <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">Thi thử bấm giờ</div>
-      <p className="text-sm mb-6" style={{ color: t.inkSoft }}>{subject.name} · Mô phỏng phòng thi trực tuyến</p>
+      <BackRow t={t} onBack={onBack} label="Trở về" />
+      <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">Thi Sát Hạch HTX 369</div>
+      <p className="text-sm mb-6" style={{ color: t.inkSoft }}>Mô phỏng kỳ thi sát hạch chính thức trọn bộ 8 Bài Học</p>
 
       <div className="text-xs font-semibold mb-2" style={{ color: t.inkSoft }}>SỐ CÂU HỎI</div>
       <div className="grid grid-cols-4 gap-2 mb-5">
-        {[10, 20, 30, 50].map((n) => (
+        {[20, 40, 60, 80].map((n) => (
           <button key={n} onClick={() => setCount(n)} className="rounded-lg border py-3 text-sm font-semibold transition-all"
             style={{ borderColor: count === n ? t.accent : t.border, background: count === n ? t.accentSoft : t.surface, color: count === n ? t.accent : t.ink }}>
-            {n}
+            {n} câu
           </button>
         ))}
       </div>
 
-      <div className="text-xs font-semibold mb-2" style={{ color: t.inkSoft }}>THỜI GIAN (PHÚT)</div>
+      <div className="text-xs font-semibold mb-2" style={{ color: t.inkSoft }}>THỜI GIAN LÀM BÀI (PHÚT)</div>
       <div className="grid grid-cols-4 gap-2 mb-6">
-        {[10, 20, 30, 45].map((n) => (
+        {[20, 30, 45, 60].map((n) => (
           <button key={n} onClick={() => setMinutes(n)} className="rounded-lg border py-3 text-sm font-semibold transition-all"
             style={{ borderColor: minutes === n ? t.accent : t.border, background: minutes === n ? t.accentSoft : t.surface, color: minutes === n ? t.accent : t.ink }}>
-            {n}
+            {n} phút
           </button>
         ))}
       </div>
 
       <button onClick={() => onStart(count, minutes)} className="w-full rounded-lg py-3 text-sm font-semibold text-white shadow-sm transition-all" style={{ background: t.accent }}>
-        Bắt đầu thi · {count} câu / {minutes} phút
+        Vào Thi Sát Hạch · {count} câu / {minutes} phút
       </button>
     </div>
   );
@@ -857,7 +887,7 @@ function ExamSetup({ t, subject, onBack, onStart }) {
 function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish }) {
   const { mode, questions, timeLimit, subjectId } = setup;
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState({}); // qid -> optionIndex | 'skip'
+  const [answers, setAnswers] = useState({});
   const [flags, setFlags] = useState(new Set());
   const [showFeedback, setShowFeedback] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timeLimit || null);
@@ -925,8 +955,8 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
           <X size={16} /> Thoát
         </button>
         {mode === "exam" && timeLeft !== null && (
-          <div className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full border"
-            style={{ borderColor: timeLeft < 60 ? t.incorrect : t.border, color: timeLeft < 60 ? t.incorrect : t.ink, background: t.surface }}>
+          <div className="flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1 rounded-full border shadow-sm"
+            style={{ borderColor: timeLeft < 120 ? t.incorrect : t.border, color: timeLeft < 120 ? t.incorrect : t.ink, background: t.surface }}>
             <Clock size={15} /> {fmtTime(timeLeft)}
           </div>
         )}
@@ -944,7 +974,7 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
 
       <div className="rounded-xl border p-5 mb-4 shadow-sm" style={{ borderColor: t.border, background: t.surface }}>
         <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="text-base font-medium leading-relaxed" style={{ color: t.ink }}>{current.content}</div>
+          <div className="text-base font-semibold leading-relaxed" style={{ color: t.ink }}>{current.content}</div>
           <button onClick={() => onToggleBookmark(current.id)} className="shrink-0 mt-0.5 p-1 rounded hover:bg-black/5">
             <Bookmark size={18} color={isBookmarked ? t.gold : t.inkSoft} fill={isBookmarked ? t.gold : "none"} />
           </button>
@@ -966,7 +996,7 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
                 <span className="w-6 h-6 rounded-full border flex items-center justify-center text-xs font-semibold shrink-0" style={{ borderColor: color }}>
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span className="flex-1">{opt}</span>
+                <span className="flex-1 font-medium">{opt}</span>
               </button>
             );
           })}
@@ -977,7 +1007,7 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
             <div className="font-semibold mb-1" style={{ color: selected === current.correctIndex ? t.correct : t.incorrect }}>
               {selected === current.correctIndex ? "✅ Chính xác!" : `❌ Bạn chọn: ${String.fromCharCode(65 + selected)} · Đáp án đúng: ${String.fromCharCode(65 + current.correctIndex)}`}
             </div>
-            <div className="text-xs leading-relaxed mt-1" style={{ color: t.inkSoft }}>💡 <strong>Giải thích:</strong> {current.explanation}</div>
+            <div className="text-xs leading-relaxed mt-1" style={{ color: t.inkSoft }}>💡 <strong>Giải thích chi tiết:</strong> {current.explanation}</div>
           </div>
         )}
       </div>
@@ -1018,7 +1048,7 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
       </div>
 
       {mode === "exam" && (
-        <div className="flex flex-wrap gap-1.5 mt-5 p-3 rounded-xl border" style={{ borderColor: t.border, background: t.surface }}>
+        <div className="flex flex-wrap gap-1.5 mt-5 p-3 rounded-xl border max-h-48 overflow-y-auto" style={{ borderColor: t.border, background: t.surface }}>
           {questions.map((qq, i) => {
             const a = answers[qq.id];
             const isCur = i === idx;
@@ -1039,9 +1069,9 @@ function QuizRunner({ t, setup, bookmarkIds, onToggleBookmark, onExit, onFinish 
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle size={20} color={t.gold} className="shrink-0 mt-0.5" />
             <div>
-              <div className="text-base font-semibold" style={{ color: t.ink }}>Xác nhận nộp bài thi?</div>
+              <div className="text-base font-semibold" style={{ color: t.ink }}>Xác nhận nộp bài thi sát hạch?</div>
               <div className="text-xs mt-1 leading-relaxed" style={{ color: t.inkSoft }}>
-                Bạn đã hoàn thành {answeredCount}/{total} câu hỏi. Bạn có chắc chắn muốn nộp bài thi ngay bây giờ?
+                Bạn đã trả lời {answeredCount}/{total} câu hỏi. Bạn có chắc chắn muốn nộp bài thi ngay bây giờ không?
               </div>
             </div>
           </div>
@@ -1098,7 +1128,7 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
     <Modal t={t} onClose={onClose}>
       <div className="flex justify-between items-center mb-4">
         <div style={{ fontFamily: serif }} className="text-xl font-bold">
-          {isRegister ? "Đăng ký tài khoản" : "Đăng nhập Ôn Luyện 369"}
+          {isRegister ? "Đăng ký tài khoản" : "Đăng nhập HTX 369"}
         </div>
         <button onClick={onClose} className="p-1 rounded hover:bg-black/5"><X size={16} color={t.inkSoft} /></button>
       </div>
@@ -1120,7 +1150,7 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
 
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Email</label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hocvien@htx369.vn"
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="thanhvien@htx369.vn"
             className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
         </div>
 
@@ -1145,10 +1175,84 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
   );
 }
 
+/* ============================== CERTIFICATE MODAL ============================== */
+function CertificateModal({ t, result, user, onClose }) {
+  const pct = Math.round((result.correctCount / result.total) * 100);
+  const dateStr = new Date().toLocaleDateString('vi-VN');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xl bg-white text-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl border-4 border-amber-400 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:text-slate-700">
+          <X size={20} />
+        </button>
+
+        <div className="text-center border-4 border-dashed border-amber-300 p-6 rounded-xl bg-amber-50/50">
+          <div className="w-14 h-14 bg-amber-500 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+            <Award size={32} />
+          </div>
+          
+          <div style={{ fontFamily: serif }} className="text-xs uppercase tracking-widest text-amber-800 font-bold mb-1">
+            HỢP TÁC XÃ 369 GROUP
+          </div>
+
+          <h2 style={{ fontFamily: serif }} className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">
+            GIẤY CHỨNG NHẬN ĐẠT SÁT HẠCH
+          </h2>
+
+          <p className="text-xs text-slate-600 mb-4 italic">
+            Chứng nhận hoàn thành tốt chương trình đào tạo & bài kiểm tra trắc nghiệm sát hạch chuẩn HTX 369
+          </p>
+
+          <div className="my-4 py-2 border-t border-b border-amber-200">
+            <div className="text-xs text-slate-500 font-medium">Cấp cho Học viên:</div>
+            <div style={{ fontFamily: serif }} className="text-xl sm:text-2xl font-bold text-emerald-800 my-1">
+              {user ? (user.name || user.email) : "Học viên HTX 369"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto my-4 text-xs">
+            <div className="bg-white p-2.5 rounded-lg border border-amber-200">
+              <span className="text-slate-500">Kết quả Sát hạch:</span>
+              <div className="font-bold text-emerald-700 text-base">{result.correctCount}/{result.total} câu ({pct}%)</div>
+            </div>
+            <div className="bg-white p-2.5 rounded-lg border border-amber-200">
+              <span className="text-slate-500">Ngày cấp:</span>
+              <div className="font-bold text-slate-800 text-base">{dateStr}</div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-end mt-6 text-left text-[11px] text-slate-500 pt-3 border-t border-amber-200">
+            <div>
+              <div>Mã xác nhận: <strong>HTX369-{uid().toUpperCase()}</strong></div>
+              <div>Hệ thống đào tạo trắc nghiệm Ôn Luyện 369</div>
+            </div>
+            <div className="text-center font-semibold text-emerald-800">
+              <CheckCircle2 size={24} className="mx-auto text-emerald-600 mb-0.5" />
+              ĐÃ XÁC NHẬN ĐẠT
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50">
+            <Printer size={15} /> In Giấy Chứng Nhận
+          </button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800">
+            Hoàn thành
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ============================== RESULTS ============================== */
-function ResultsView({ t, result, onHome, onReviewWrong, onRetakeWrong }) {
+function ResultsView({ t, result, user, onHome, onReviewWrong, onRetakeWrong, onOpenCert }) {
   const { correctCount, wrongCount, skippedCount, total, elapsed, perQuestion } = result;
   const pct = Math.round((correctCount / total) * 100);
+  const isPassed = pct >= 70;
+
   const byTopic = useMemo(() => {
     const map = {};
     perQuestion.forEach((p) => {
@@ -1160,19 +1264,29 @@ function ResultsView({ t, result, onHome, onReviewWrong, onRetakeWrong }) {
     });
     return Object.values(map);
   }, [perQuestion]);
+
   const wrongList = perQuestion.filter((p) => p.correct === false);
 
   return (
     <div className="max-w-2xl">
       <div className="text-center mb-8 pt-4">
-        <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4 border-2"
-          style={{ background: pct >= 70 ? t.correctSoft : pct >= 40 ? "#F5EBD3" : t.incorrectSoft, borderColor: pct >= 70 ? t.correct : pct >= 40 ? t.gold : t.incorrect }}>
-          <div style={{ fontFamily: serif, color: pct >= 70 ? t.correct : pct >= 40 ? t.gold : t.incorrect }} className="text-2xl font-bold">{pct}%</div>
+        <div className="w-24 h-24 rounded-full mx-auto flex items-center justify-center mb-4 border-4 shadow-sm"
+          style={{ background: isPassed ? t.correctSoft : pct >= 40 ? "#F5EBD3" : t.incorrectSoft, borderColor: isPassed ? t.correct : pct >= 40 ? t.gold : t.incorrect }}>
+          <div style={{ fontFamily: serif, color: isPassed ? t.correct : pct >= 40 ? t.gold : t.incorrect }} className="text-3xl font-bold">{pct}%</div>
         </div>
+        
         <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-1">
-          {pct >= 70 ? "Làm tốt lắm! 🎉" : pct >= 40 ? "Cố lên nào! 💪" : "Cần ôn lại thêm 📚"}
+          {isPassed ? "XÁC NHẬN ĐẠT SÁT HẠCH! 🎉" : pct >= 40 ? "Cố lên nào! 💪" : "Cần ôn tập thêm 📚"}
         </div>
-        <p className="text-sm" style={{ color: t.inkSoft }}>Bạn đã hoàn thành bài {result.mode === "exam" ? "thi thử" : result.mode === "quick" ? "luyện nhanh" : "luyện tập"}</p>
+        <p className="text-sm" style={{ color: t.inkSoft }}>
+          Bạn đã trả lời đúng {correctCount}/{total} câu trong thời gian {fmtTime(elapsed)}
+        </p>
+
+        {isPassed && (
+          <button onClick={onOpenCert} className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500 text-white font-bold text-xs shadow-md hover:bg-amber-600 transition-all">
+            <Award size={16} /> Bấm Nhận Giấy Chứng Nhận HTX 369
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-2 mb-8">
@@ -1184,7 +1298,7 @@ function ResultsView({ t, result, onHome, onReviewWrong, onRetakeWrong }) {
 
       {byTopic.length > 1 && (
         <div className="mb-8 p-4 rounded-xl border" style={{ borderColor: t.border, background: t.surface }}>
-          <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Điểm theo bài học / chủ đề</div>
+          <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Kết quả theo từng Bài học HTX 369</div>
           <div className="space-y-3">
             {byTopic.map((b, i) => (
               <div key={i}>
@@ -1203,7 +1317,7 @@ function ResultsView({ t, result, onHome, onReviewWrong, onRetakeWrong }) {
 
       {wrongList.length > 0 && (
         <div className="mb-8">
-          <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Chi tiết câu trả lời sai ({wrongList.length})</div>
+          <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Chi tiết các câu chưa làm đúng ({wrongList.length})</div>
           <div className="space-y-3">
             {wrongList.map((p) => (
               <div key={p.id} className="rounded-lg border p-4 shadow-sm" style={{ borderColor: t.border, background: t.surface }}>
@@ -1214,8 +1328,8 @@ function ResultsView({ t, result, onHome, onReviewWrong, onRetakeWrong }) {
                 <div className="text-xs font-semibold mt-1" style={{ color: t.correct }}>
                   ✅ Đáp án đúng: {String.fromCharCode(65 + p.question.correctIndex)}. {p.question.options[p.question.correctIndex]}
                 </div>
-                <div className="text-xs mt-2 leading-relaxed p-2 rounded" style={{ background: t.bg, color: t.inkSoft }}>
-                  💡 <strong>Giải thích:</strong> {p.question.explanation}
+                <div className="text-xs mt-2 leading-relaxed p-2.5 rounded border" style={{ background: t.bg, borderColor: t.border, color: t.inkSoft }}>
+                  💡 <strong>Giải thích bài học:</strong> {p.question.explanation}
                 </div>
               </div>
             ))}
@@ -1268,7 +1382,7 @@ function FilterableList({ t, bank, ids, subjects, topics, onRemove, onPracticeAl
       <div style={{ fontFamily: serif }} className="text-2xl font-bold mb-4">{title} ({items.length})</div>
       <div className="flex flex-wrap gap-2 mb-5">
         <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="text-xs rounded-lg border px-3 py-2" style={{ borderColor: t.border, background: t.surface, color: t.ink }}>
-          <option value="all">Tất cả môn học</option>
+          <option value="all">Tất cả chương trình</option>
           {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select value={diffFilter} onChange={(e) => setDiffFilter(e.target.value)} className="text-xs rounded-lg border px-3 py-2" style={{ borderColor: t.border, background: t.surface, color: t.ink }}>
@@ -1310,7 +1424,7 @@ function BookmarksView({ t, bank, bookmarkIds, subjects, topics, onRemove, onPra
 const emptyForm = { subjectId: SUBJECTS[0].id, topicId: TOPICS[0].id, content: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", difficulty: "easy" };
 
 function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
-  const [tab, setTab] = useState("list"); // list | form | import
+  const [tab, setTab] = useState("list");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
@@ -1411,14 +1525,14 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
         <div className="space-y-4 p-5 rounded-xl border" style={{ borderColor: t.border, background: t.surface }}>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold" style={{ color: t.inkSoft }}>Môn học</label>
+              <label className="text-xs font-semibold" style={{ color: t.inkSoft }}>Môn học / Chương trình</label>
               <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value, topicId: topics.find((tp) => tp.subjectId === e.target.value)?.id })}
                 className="w-full mt-1 text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold" style={{ color: t.inkSoft }}>Chủ đề</label>
+              <label className="text-xs font-semibold" style={{ color: t.inkSoft }}>Bài học</label>
               <select value={form.topicId} onChange={(e) => setForm({ ...form, topicId: e.target.value })}
                 className="w-full mt-1 text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
                 {topics.filter((tp) => tp.subjectId === form.subjectId).map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
