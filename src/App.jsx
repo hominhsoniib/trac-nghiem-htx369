@@ -1429,28 +1429,12 @@ function BookmarksView({ t, bank, bookmarkIds, subjects, topics, onRemove, onPra
 const emptyForm = { subjectId: SUBJECTS[0].id, topicId: TOPICS[0].id, content: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", difficulty: "easy" };
 
 const DEFAULT_MEMBERS = [
-  { id: "m1", memberCode: "TV-00001", type: "ca_nhan", name: "Nguyễn Văn An", phone: "0988 123 456", email: "thanhvien@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
-  { id: "m2", memberCode: "TV-00002", type: "ca_nhan", name: "Hồ Minh Sơn", phone: "0912 345 678", email: "admin@htx369.vn", taxCode: "", representative: "", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
-  { id: "m3", memberCode: "PN-00001", type: "phap_nhan", name: "HTX Nông Nghiệp Bền Vững 369", phone: "024 3888 999", email: "contact@nongnghiep369.vn", taxCode: "0109876543", representative: "Trần Thị Mai", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
-  { id: "m4", memberCode: "TV-00003", type: "ca_nhan", name: "Lê Văn Bình", phone: "0903 456 789", email: "binhlv@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
-  { id: "m5", memberCode: "PN-00002", type: "phap_nhan", name: "Công ty Dược Liệu Hữu Cơ 369", phone: "028 7300 123", email: "cuongpq@duoclieu369.vn", taxCode: "0316543210", representative: "Phạm Quốc Cường", role: "Nhà sản xuất", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
+  { id: "m1", memberCode: "001092008812", type: "ca_nhan", name: "Nguyễn Văn An", phone: "0988 123 456", email: "thanhvien@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
+  { id: "m2", memberCode: "001092009934", type: "ca_nhan", name: "Hồ Minh Sơn", phone: "0912 345 678", email: "admin@htx369.vn", taxCode: "", representative: "", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
+  { id: "m3", memberCode: "0109876543", type: "phap_nhan", name: "HTX Nông Nghiệp Bền Vững 369", phone: "024 3888 999", email: "contact@nongnghiep369.vn", taxCode: "0109876543", representative: "Trần Thị Mai", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
+  { id: "m4", memberCode: "001092007756", type: "ca_nhan", name: "Lê Văn Bình", phone: "0903 456 789", email: "binhlv@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
+  { id: "m5", memberCode: "0316543210", type: "phap_nhan", name: "Công ty Dược Liệu Hữu Cơ 369", phone: "028 7300 123", email: "cuongpq@duoclieu369.vn", taxCode: "0316543210", representative: "Phạm Quốc Cường", role: "Nhà sản xuất", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
 ];
-
-const getNextMemberCode = (membersList, type) => {
-  const prefix = type === "phap_nhan" ? "PN-" : "TV-";
-  let maxNum = 0;
-  (membersList || []).forEach((m) => {
-    if (m.memberCode && m.memberCode.startsWith(prefix)) {
-      const numPart = m.memberCode.replace(prefix, "").replace(/\D/g, "");
-      const num = parseInt(numPart, 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
-      }
-    }
-  });
-  const nextNum = maxNum + 1;
-  return `${prefix}${String(nextNum).padStart(5, "0")}`;
-};
 
 const emptyMemberForm = {
   memberCode: "",
@@ -1512,29 +1496,27 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   // Member Action Handlers
   const openNewMember = () => {
     setEditingMember(null);
-    const autoCode = getNextMemberCode(members, "ca_nhan");
-    setMemberForm({ ...emptyMemberForm, type: "ca_nhan", memberCode: autoCode, status: "STUDYING", examScore: "" });
+    setMemberForm({ ...emptyMemberForm, type: "ca_nhan", status: "STUDYING", examScore: "" });
     setShowMemberModal(true);
   };
 
   const handleTypeSwitch = (newType) => {
-    const autoCode = getNextMemberCode(members, newType);
     setMemberForm((prev) => ({
       ...prev,
       type: newType,
-      memberCode: autoCode,
+      memberCode: newType === "phap_nhan" ? prev.taxCode || prev.memberCode : prev.memberCode,
     }));
   };
 
   const openEditMember = (m) => {
     setEditingMember(m.id);
     setMemberForm({
-      memberCode: m.memberCode || getNextMemberCode(members, m.type || "ca_nhan"),
+      memberCode: m.memberCode || "",
       type: m.type || "ca_nhan",
       name: m.name || "",
       phone: m.phone || "",
       email: m.email || "",
-      taxCode: m.taxCode || "",
+      taxCode: m.taxCode || (m.type === "phap_nhan" ? m.memberCode : ""),
       representative: m.representative || "",
       role: m.role || "Thành viên HTX 369",
       status: m.status || "STUDYING",
@@ -1555,12 +1537,13 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
       return;
     }
 
-    if (memberForm.type === "phap_nhan" && !memberForm.taxCode.trim()) {
-      alert("Vui lòng nhập Mã số thuế (MST) đối với loại hình Pháp nhân!");
+    if (!memberForm.memberCode.trim()) {
+      alert(memberForm.type === "phap_nhan" ? "Vui lòng nhập Mã số thuế (MST) làm Mã TV HTX!" : "Vui lòng nhập Số CCCD / Mã định danh làm Mã TV HTX!");
       return;
     }
 
-    const code = memberForm.memberCode.trim() || getNextMemberCode(members, memberForm.type);
+    const code = memberForm.memberCode.trim();
+    const tax = memberForm.type === "phap_nhan" ? code : memberForm.taxCode;
     const isPassed = memberForm.status === "PASSED";
 
     if (editingMember) {
@@ -1570,6 +1553,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
               ...m,
               ...memberForm,
               memberCode: code,
+              taxCode: tax,
               examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
               certId: isPassed ? (m.certId || `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`) : null,
             }
@@ -1581,6 +1565,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
         id: "m_" + uid(),
         ...memberForm,
         memberCode: code,
+        taxCode: tax,
         name: memberForm.name.trim(),
         email: memberForm.email.trim(),
         progressCount: isPassed ? 8 : 0,
@@ -1783,13 +1768,17 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
 
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mã TV HTX</label>
-                <input type="text" required value={memberForm.memberCode} onChange={(e) => setMemberForm({ ...memberForm, memberCode: e.target.value })} placeholder="TV-36901"
+                <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>
+                  {memberForm.type === "phap_nhan" ? "Mã TV HTX (Mã số thuế - MST)" : "Mã TV HTX (Số CCCD)"}
+                </label>
+                <input type="text" required value={memberForm.memberCode}
+                  onChange={(e) => setMemberForm({ ...memberForm, memberCode: e.target.value, taxCode: memberForm.type === "phap_nhan" ? e.target.value : memberForm.taxCode })}
+                  placeholder={memberForm.type === "phap_nhan" ? "0109876543" : "001092001234"}
                   className="w-full text-xs rounded-lg border px-2.5 py-2 font-mono outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
               </div>
               <div className="col-span-2">
                 <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>{memberForm.type === "phap_nhan" ? "Tên Doanh nghiệp / HTX" : "Họ và tên thành viên"}</label>
-                <input type="text" required value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} placeholder={memberForm.type === "phap_nhan" ? "Công ty / HTX 369" : "Nguyễn Văn A"}
+                <input type="text" required value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} placeholder={memberForm.type === "phap_nhan" ? "Công ty / HTX Nông Nghiệp 369" : "Nguyễn Văn A"}
                   className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
               </div>
             </div>
@@ -1809,17 +1798,10 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
             </div>
 
             {memberForm.type === "phap_nhan" && (
-              <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg border bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
-                <div>
-                  <label className="text-xs font-semibold block mb-1 text-purple-800 dark:text-purple-300">Mã số thuế (MST)</label>
-                  <input type="text" required value={memberForm.taxCode} onChange={(e) => setMemberForm({ ...memberForm, taxCode: e.target.value })} placeholder="0109876543"
-                    className="w-full text-xs rounded-lg border px-2.5 py-1.5 font-mono outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold block mb-1 text-purple-800 dark:text-purple-300">Người đại diện pháp luật</label>
-                  <input type="text" value={memberForm.representative} onChange={(e) => setMemberForm({ ...memberForm, representative: e.target.value })} placeholder="Nguyễn Văn A"
-                    className="w-full text-xs rounded-lg border px-2.5 py-1.5 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-                </div>
+              <div className="p-2.5 rounded-lg border bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
+                <label className="text-xs font-semibold block mb-1 text-purple-800 dark:text-purple-300">Người đại diện pháp luật</label>
+                <input type="text" value={memberForm.representative} onChange={(e) => setMemberForm({ ...memberForm, representative: e.target.value })} placeholder="Ví dụ: Nguyễn Văn A"
+                  className="w-full text-xs rounded-lg border px-2.5 py-1.5 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
               </div>
             )}
 
