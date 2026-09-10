@@ -29,9 +29,9 @@ const sans = 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif';
 /* ============================== SEED DATA ============================== */
 const SUBJECTS = [
   { id: "htx369", name: "Bộ Đề Thi Trắc Nghiệm HTX 369 (80 Câu Sát Hạch)", accent: "#2F6F62" },
-  { id: "toan", name: "Toán học", accent: "#2F6F62" },
-  { id: "anh", name: "Tiếng Anh", accent: "#3B5BA5" },
-  { id: "su", name: "Lịch sử Việt Nam", accent: "#C1483C" },
+  { id: "luat-thue", name: "Luật thuế VN", accent: "#2F6F62" },
+  { id: "ho-kd", name: "Quy định Hộ kinh doanh", accent: "#3B5BA5" },
+  { id: "xet-duyet-sphh", name: "Quy trình xét duyệt SP&HH", accent: "#C1483C" },
 ];
 
 const TOPICS = [
@@ -44,13 +44,13 @@ const TOPICS = [
   { id: "bai-6", subjectId: "htx369", name: "Bài 6 — Bản chất Credit 369" },
   { id: "bai-7", subjectId: "htx369", name: "Bài 7 — Tam giác phúc lợi" },
   { id: "bai-8", subjectId: "htx369", name: "Bài 8 — Demo 5 phút & Xác nhận ĐẠT" },
-  // Phổ thông
-  { id: "dai-so", subjectId: "toan", name: "Đại số" },
-  { id: "hinh-hoc", subjectId: "toan", name: "Hình học" },
-  { id: "ngu-phap", subjectId: "anh", name: "Ngữ pháp" },
-  { id: "tu-vung", subjectId: "anh", name: "Từ vựng" },
-  { id: "phong-kien", subjectId: "su", name: "Thời kỳ phong kiến" },
-  { id: "hien-dai", subjectId: "su", name: "Thời kỳ hiện đại" },
+  // Chuyên đề nghiệp vụ
+  { id: "thue-gtgt", subjectId: "luat-thue", name: "Thuế Giá trị gia tăng (GTGT)" },
+  { id: "thue-tncn", subjectId: "luat-thue", name: "Thuế TNCN & TNDN" },
+  { id: "dang-ky-hkd", subjectId: "ho-kd", name: "Đăng ký & Quản lý Hộ kinh doanh" },
+  { id: "nghiep-vu-hkd", subjectId: "ho-kd", name: "Nghĩa vụ thuế Hộ kinh doanh" },
+  { id: "ho-so-sphh", subjectId: "xet-duyet-sphh", name: "Hồ sơ Product Passport" },
+  { id: "kiem-dinh-sphh", subjectId: "xet-duyet-sphh", name: "Thẩm định & Phê duyệt niêm yết" },
 ];
 
 let _qid = 0;
@@ -320,13 +320,17 @@ const SEED_QUESTIONS = [
     ["Đủ 8/8 nội dung", "Demo 5 phút đạt", "Phỏng vấn xác nhận và không còn red flag chưa xử lý", "Tất cả các đáp án trên"],
     3, "Hội tụ đầy đủ cả 3 yếu tố: Lý thuyết 8/8, Thực hành Demo 5 phút và Phỏng vấn đánh giá.", "hard"),
 
-  // ================= CÁC MÔN KHÁC (Phổ thông) =================
-  q("dai-so", "Giải phương trình: 2x + 5 = 13", ["x = 3", "x = 4", "x = 5", "x = 6"], 1, "2x = 13 - 5 = 8, nên x = 4.", "easy"),
-  q("hinh-hoc", "Tổng ba góc trong một tam giác bằng?", ["90°", "180°", "270°", "360°"], 1, "Định lý tổng ba góc trong tam giác luôn bằng 180°.", "easy"),
-  q("ngu-phap", "Chọn đáp án đúng: She ___ to school every day.", ["go", "goes", "going", "gone"], 1, "Chủ ngữ 'she' số ít, động từ thường ở hiện tại đơn thêm 's': goes.", "easy"),
-  q("tu-vung", "Từ đồng nghĩa với 'happy' là?", ["sad", "joyful", "angry", "tired"], 1, "'Joyful' mang nghĩa vui vẻ, đồng nghĩa với 'happy'.", "easy"),
-  q("phong-kien", "Nhà nước phong kiến đầu tiên của Việt Nam là?", ["Nhà Lý", "Nhà Đinh", "Nhà Trần", "Nhà Lê"], 1, "Nhà Đinh (968) do Đinh Bộ Lĩnh lập ra, là triều đại phong kiến tập quyền đầu tiên.", "medium"),
-  q("hien-dai", "Chủ tịch Hồ Chí Minh đọc Tuyên ngôn Độc lập vào ngày nào?", ["19/8/1945", "2/9/1945", "30/4/1975", "7/5/1954"], 1, "Ngày 2/9/1945 tại Quảng trường Ba Đình, Hà Nội.", "easy"),
+  // ================= LUẬT THUẾ VN =================
+  q("thue-gtgt", "Mức thuế suất Thuế Giá trị gia tăng (GTGT) phổ thông tại Việt Nam hiện nay là bao nhiêu?", ["5%", "8%", "10%", "12%"], 2, "Thuế suất GTGT phổ thông quy định là 10% (có chính sách giảm trừ còn 8% tùy giai đoạn theo Nghị quyết của Quốc hội).", "easy"),
+  q("thue-tncn", "Mức giảm trừ gia cảnh đối với bản thân người nộp thuế TNCN hiện nay là bao nhiêu/tháng?", ["9 triệu đồng", "11 triệu đồng", "15 triệu đồng", "20 triệu đồng"], 1, "Theo Nghị quyết 954/2020/UBTVQH14, mức giảm trừ gia cảnh cho bản thân người nộp thuế là 11 triệu đồng/tháng (132 triệu đồng/năm).", "medium"),
+
+  // ================= QUY ĐỊNH HỘ KINH DOANH =================
+  q("dang-ky-hkd", "Theo Nghị định 01/2021/NĐ-CP, Hộ kinh doanh do đối tượng nào thành lập?", ["Chỉ duy nhất 1 cá nhân", "Một cá nhân hoặc các thành viên hộ gia đình", "Tối thiểu 3 cổ đông", "Doanh nghiệp Nhà nước"], 1, "Hộ kinh doanh do một cá nhân hoặc các thành viên hộ gia đình đăng ký thành lập và chịu trách nhiệm bằng toàn bộ tài sản của mình.", "easy"),
+  q("nghiep-vu-hkd", "Hộ kinh doanh có doanh thu hàng năm từ bao nhiêu trở xuống thì KHÔNG phải nộp thuế GTGT và thuế TNCN?", ["50 triệu đồng", "100 triệu đồng", "150 triệu đồng", "200 triệu đồng"], 1, "Hộ kinh doanh, cá nhân kinh doanh có doanh thu trong năm dương lịch từ 100 triệu đồng trở xuống thuộc đối tượng không phải nộp thuế GTGT và TNCN.", "medium"),
+
+  // ================= QUY TRÌNH XÉT DUYỆT SP&HH =================
+  q("ho-so-sphh", "Trong quy trình xét duyệt sản phẩm hàng hóa 369, yếu tố nào là bắt buộc để chứng minh tính minh bạch?", ["Phiếu cam kết miệng", "Hồ sơ nguồn gốc xuất xứ & Product Passport (Mã QR)", "Giấy vay nợ", "Hóa đơn bán lẻ tự in"], 1, "Product Passport (Nhật ký sản phẩm QR Code) và tài liệu kiểm định nguồn gốc xuất xứ rõ ràng là điều kiện tiên quyết.", "easy"),
+  q("kiem-dinh-sphh", "Sản phẩm đưa vào Hệ sinh thái HTX 369 phải đáp ứng tiêu chí cốt lõi nào?", ["Giá bán cao nhất thị trường", "Chất lượng minh bạch, an toàn sức khỏe đồng bào và chuẩn mực pháp lý", "Trích chi trả hoa hồng nhiều tầng", "Không cần tem nhãn phụ"], 1, "Đảm bảo Sức khỏe đồng bào, chất lượng minh bạch, rõ nguồn gốc và tuyệt đối tuân thủ pháp luật.", "medium"),
 ];
 
 /* ============================== HELPERS ============================== */
