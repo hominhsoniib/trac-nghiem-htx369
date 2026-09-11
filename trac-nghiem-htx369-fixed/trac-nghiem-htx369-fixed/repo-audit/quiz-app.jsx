@@ -4,9 +4,9 @@ import {
   Circle, Flag, Clock, ChevronLeft, ChevronRight, TrendingUp, Award, Plus,
   Trash2, Pencil, Upload, Search, ArrowLeft, Sun, Moon, X, AlertTriangle,
   User, LogIn, LogOut, ShieldCheck, Download, RefreshCw, FileCheck, Sparkles, Printer,
-  Users, UserPlus, Lock, KeyRound, Eye, EyeOff
+  Users, UserPlus
 } from "lucide-react";
-import { loginUser, registerUser, initSession, logoutUser, changePassword, fetchMembers, createMember, updateMember, deleteMember as deleteMemberApi } from "./services/api";
+import { loginUser, registerUser, fetchProfile, logoutUser } from "./services/api";
 
 /* ============================== THEME TOKENS ============================== */
 const palette = {
@@ -401,7 +401,6 @@ export default function App() {
   // User Auth State
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showChangePwModal, setShowChangePwModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -410,7 +409,7 @@ export default function App() {
         storageGet("progress", DEFAULT_PROGRESS),
         storageGet("wrong-ids", []),
         storageGet("bookmark-ids", []),
-        initSession(), // silently restores the session from the httpOnly refresh cookie, if any
+        fetchProfile(),
       ]);
       setBank(b); setProgress(p); setWrongIds(w); setBookmarkIds(bm);
       if (currentUser) setUser(currentUser);
@@ -484,7 +483,6 @@ export default function App() {
         t={t} dark={dark} setDark={setDark} view={view}
         setView={(v) => { setView(v); setSelSubject(null); setSelTopic(null); }}
         user={user} onOpenAuth={() => setShowAuthModal(true)} onLogout={handleLogout}
-        onChangePassword={() => setShowChangePwModal(true)}
       />
       
       <main className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-8 pb-24 md:pb-8">
@@ -497,8 +495,7 @@ export default function App() {
             <div className="flex items-center gap-2 text-xs" style={{ color: t.inkSoft }}>
               <User size={14} color={t.accent} />
               <span className="font-semibold" style={{ color: t.ink }}>{user.name || user.email}</span>
-              <button onClick={() => setShowChangePwModal(true)} title="Đổi mật khẩu" className="p-1 rounded hover:bg-black/5"><KeyRound size={14} /></button>
-              <button onClick={handleLogout} title="Đăng xuất" className="p-1 rounded hover:bg-black/5"><LogOut size={14} /></button>
+              <button onClick={handleLogout} className="p-1 rounded hover:bg-black/5"><LogOut size={14} /></button>
             </div>
           ) : (
             <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg text-white font-medium" style={{ background: t.accent }}>
@@ -577,11 +574,7 @@ export default function App() {
             onRemove={toggleBookmark} onPracticeAll={(qs) => startQuiz("practice", shuffle(qs), {})} />
         )}
         {view === "admin" && (
-          user?.role === "admin" ? (
-            <AdminPanel t={t} bank={bank} subjects={SUBJECTS} topics={TOPICS} onChange={persistBank} progress={progress} />
-          ) : (
-            <AccessDenied t={t} onHome={() => setView("dashboard")} />
-          )
+          <AdminPanel t={t} bank={bank} subjects={SUBJECTS} topics={TOPICS} onChange={persistBank} progress={progress} />
         )}
       </main>
 
@@ -589,11 +582,6 @@ export default function App() {
 
       {showAuthModal && (
         <AuthModal t={t} onClose={() => setShowAuthModal(false)} onAuthSuccess={(u) => { setUser(u); setShowAuthModal(false); }} />
-      )}
-
-      {showChangePwModal && (
-        <ChangePasswordModal t={t} onClose={() => setShowChangePwModal(false)}
-          onChanged={() => { setShowChangePwModal(false); setUser(null); setShowAuthModal(true); }} />
       )}
 
       {showCertificate && (
@@ -614,13 +602,8 @@ const NAV_ITEMS = [
   { id: "admin", label: "Quản trị đề", icon: Settings },
 ];
 
-function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout, onChangePassword }) {
+function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout }) {
   const activeGroup = (id) => (id === "subjects" && view === "topics") || view === id;
-  // "Quản trị đề" is only ever shown to a logged-in admin. Hiding it is a UX
-  // nicety, not the security boundary — that lives server-side on every
-  // /api/members/* route (requireRole('admin')) and is re-checked below
-  // when the "admin" view actually renders.
-  const visibleItems = NAV_ITEMS.filter((item) => item.id !== "admin" || user?.role === "admin");
   return (
     <aside className="hidden md:flex md:flex-col w-64 shrink-0 border-r min-h-screen" style={{ borderColor: t.border, background: t.surface }}>
       <div className="px-6 py-6 border-b" style={{ borderColor: t.border }}>
@@ -641,14 +624,9 @@ function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout, 
                 <div className="text-[10px] truncate" style={{ color: t.inkSoft }}>{user.email}</div>
               </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button onClick={onChangePassword} title="Đổi mật khẩu" className="p-1.5 rounded-lg hover:bg-black/5 text-xs" style={{ color: t.inkSoft }}>
-                <KeyRound size={15} />
-              </button>
-              <button onClick={onLogout} title="Đăng xuất" className="p-1.5 rounded-lg hover:bg-black/5 text-xs" style={{ color: t.inkSoft }}>
-                <LogOut size={15} />
-              </button>
-            </div>
+            <button onClick={onLogout} title="Đăng xuất" className="p-1.5 rounded-lg hover:bg-black/5 text-xs" style={{ color: t.inkSoft }}>
+              <LogOut size={15} />
+            </button>
           </div>
         ) : (
           <button onClick={onOpenAuth} className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-white shadow-sm" style={{ background: t.accent }}>
@@ -658,7 +636,7 @@ function SideNav({ t, dark, setDark, view, setView, user, onOpenAuth, onLogout, 
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {visibleItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = activeGroup(item.id);
           return (
@@ -754,7 +732,7 @@ function Dashboard({ t, progress, bank, wrongCount, bookmarkCount, onQuickStart,
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: t.border, background: t.surface }}>
             {progress.history.slice(0, 5).map((h, i) => {
               const s = SUBJECTS.find((x) => x.id === h.subjectId);
-              const pct = h.total ? Math.round((h.score / h.total) * 100) : 0;
+              const pct = Math.round((h.score / h.total) * 100);
               return (
                 <div key={h.id} className="flex items-center justify-between px-4 py-3" style={{ borderTop: i ? `1px solid ${t.border}` : "none" }}>
                   <div>
@@ -1128,7 +1106,6 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -1184,14 +1161,8 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
 
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu</label>
-          <div className="relative">
-            <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+            className="w-full text-sm rounded-lg border px-3 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
         </div>
 
         <button type="submit" disabled={loading} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm mt-2 disabled:opacity-50" style={{ background: t.accent }}>
@@ -1209,105 +1180,9 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
   );
 }
 
-/* ============================== CHANGE PASSWORD MODAL ============================== */
-function ChangePasswordModal({ t, onClose, onChanged }) {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (newPassword !== confirmPassword) {
-      setError("Mật khẩu mới và xác nhận mật khẩu không khớp nhau.");
-      return;
-    }
-    if (newPassword === currentPassword) {
-      setError("Mật khẩu mới phải khác mật khẩu hiện tại.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await changePassword(currentPassword, newPassword);
-      alert("✅ Đổi mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới.");
-      onChanged();
-    } catch (err) {
-      setError(err.message || "Đổi mật khẩu thất bại. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal t={t} onClose={onClose}>
-      <div className="flex justify-between items-center mb-4">
-        <div style={{ fontFamily: serif }} className="text-xl font-bold">Đổi mật khẩu</div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-black/5"><X size={16} color={t.inkSoft} /></button>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-2.5 rounded-lg border text-xs text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu hiện tại</label>
-          <div className="relative">
-            <input type={showCurrent ? "text" : "password"} required autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowCurrent(!showCurrent)} title={showCurrent ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu mới</label>
-          <div className="relative">
-            <input type={showNew ? "text" : "password"} required autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Tối thiểu 8 ký tự, có hoa/thường/số"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowNew(!showNew)} title={showNew ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Xác nhận mật khẩu mới</label>
-          <div className="relative">
-            <input type={showConfirm ? "text" : "password"} required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowConfirm(!showConfirm)} title={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-
-        <p className="text-[11px]" style={{ color: t.inkSoft }}>Sau khi đổi mật khẩu, mọi phiên đăng nhập (kể cả phiên hiện tại) sẽ bị đăng xuất vì lý do bảo mật.</p>
-
-        <button type="submit" disabled={loading} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm mt-2 disabled:opacity-50" style={{ background: t.accent }}>
-          {loading ? "Đang xử lý…" : "Đổi mật khẩu"}
-        </button>
-      </form>
-    </Modal>
-  );
-}
-
 /* ============================== CERTIFICATE MODAL ============================== */
 function CertificateModal({ t, result, user, onClose }) {
-  const pct = result.total ? Math.round((result.correctCount / result.total) * 100) : 0;
+  const pct = Math.round((result.correctCount / result.total) * 100);
   const dateStr = new Date().toLocaleDateString('vi-VN');
 
   return (
@@ -1380,7 +1255,7 @@ function CertificateModal({ t, result, user, onClose }) {
 /* ============================== RESULTS ============================== */
 function ResultsView({ t, result, user, onHome, onReviewWrong, onRetakeWrong, onOpenCert }) {
   const { correctCount, wrongCount, skippedCount, total, elapsed, perQuestion } = result;
-  const pct = total ? Math.round((correctCount / total) * 100) : 0;
+  const pct = Math.round((correctCount / total) * 100);
   const isPassed = pct >= 70;
 
   const byTopic = useMemo(() => {
@@ -1430,20 +1305,17 @@ function ResultsView({ t, result, user, onHome, onReviewWrong, onRetakeWrong, on
         <div className="mb-8 p-4 rounded-xl border" style={{ borderColor: t.border, background: t.surface }}>
           <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Kết quả theo từng Bài học HTX 369</div>
           <div className="space-y-3">
-            {byTopic.map((b, i) => {
-              const tpPct = b.total ? Math.round((b.correct / b.total) * 100) : 0;
-              return (
-                <div key={i}>
-                  <div className="flex justify-between text-xs mb-1" style={{ color: t.inkSoft }}>
-                    <span className="font-medium">{b.name}</span>
-                    <span>{b.correct}/{b.total} ({tpPct}%)</span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: t.border }}>
-                    <div className="h-full rounded-full" style={{ width: `${tpPct}%`, background: t.accent }} />
-                  </div>
+            {byTopic.map((b, i) => (
+              <div key={i}>
+                <div className="flex justify-between text-xs mb-1" style={{ color: t.inkSoft }}>
+                  <span className="font-medium">{b.name}</span>
+                  <span>{b.correct}/{b.total} ({Math.round((b.correct / b.total) * 100)}%)</span>
                 </div>
-              );
-            })}
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: t.border }}>
+                  <div className="h-full rounded-full" style={{ width: `${(b.correct / b.total) * 100}%`, background: t.accent }} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1554,27 +1426,15 @@ function BookmarksView({ t, bank, bookmarkIds, subjects, topics, onRemove, onPra
 }
 
 /* ============================== ADMIN ============================== */
-function AccessDenied({ t, onHome }) {
-  return (
-    <div className="max-w-md mx-auto text-center py-24">
-      <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center mb-4" style={{ background: t.incorrectSoft }}>
-        <Lock size={22} color={t.incorrect} />
-      </div>
-      <div style={{ fontFamily: serif }} className="text-xl mb-2">Không có quyền truy cập</div>
-      <p className="text-sm mb-6" style={{ color: t.inkSoft }}>Trang quản trị chỉ dành cho tài khoản Ban Quản Trị HTX 369.</p>
-      <button onClick={onHome} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: t.accent }}>Về trang chủ</button>
-    </div>
-  );
-}
-
 const emptyForm = { subjectId: SUBJECTS[0].id, topicId: TOPICS[0].id, content: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", difficulty: "easy" };
 
-// Member records (name, phone, tax code, cert IDs, etc.) used to be
-// hard-coded here as DEFAULT_MEMBERS — that shipped real HTX 369 PII to
-// every visitor's browser bundle, admin or not. They now live only in
-// Postgres, behind the admin-only /api/members endpoints (see
-// onluyen-auth-service/src/modules/members). AdminPanel fetches them at
-// runtime; nothing member-related is compiled into this file anymore.
+const DEFAULT_MEMBERS = [
+  { id: "m1", memberCode: "001092008812", type: "ca_nhan", name: "Nguyễn Văn An", phone: "0988 123 456", email: "thanhvien@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 92, status: "PASSED", certId: "HTX369-2026-88392", joinedDate: "2026-08-15" },
+  { id: "m2", memberCode: "001092009934", type: "ca_nhan", name: "Hồ Minh Sơn", phone: "0912 345 678", email: "admin@htx369.vn", taxCode: "", representative: "", role: "Ban Quản Trị", progressCount: 8, examScore: 98, status: "PASSED", certId: "HTX369-2026-10001", joinedDate: "2026-08-01" },
+  { id: "m3", memberCode: "0109876543", type: "phap_nhan", name: "HTX Nông Nghiệp Bền Vững 369", phone: "024 3888 999", email: "contact@nongnghiep369.vn", taxCode: "0109876543", representative: "Trần Thị Mai", role: "Thành viên HTX 369", progressCount: 6, examScore: 68, status: "STUDYING", certId: null, joinedDate: "2026-08-20" },
+  { id: "m4", memberCode: "001092007756", type: "ca_nhan", name: "Lê Văn Bình", phone: "0903 456 789", email: "binhlv@htx369.vn", taxCode: "", representative: "", role: "Thành viên HTX 369", progressCount: 8, examScore: 85, status: "PASSED", certId: "HTX369-2026-44912", joinedDate: "2026-09-02" },
+  { id: "m5", memberCode: "0316543210", type: "phap_nhan", name: "Công ty Dược Liệu Hữu Cơ 369", phone: "028 7300 123", email: "cuongpq@duoclieu369.vn", taxCode: "0316543210", representative: "Phạm Quốc Cường", role: "Nhà sản xuất", progressCount: 4, examScore: 55, status: "STUDYING", certId: null, joinedDate: "2026-09-05" },
+];
 
 const emptyMemberForm = {
   memberCode: "",
@@ -1597,32 +1457,24 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
 
-  // Member Management State — sourced live from the admin-only /api/members
-  // endpoints (Postgres-backed). No PII is bundled into the client anymore.
-  const [members, setMembers] = useState([]);
-  const [membersLoading, setMembersLoading] = useState(true);
-  const [membersError, setMembersError] = useState("");
+  // Member Management State
+  const [members, setMembers] = useState(DEFAULT_MEMBERS);
   const [memberSearch, setMemberSearch] = useState("");
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
 
-  const reloadMembers = async () => {
-    setMembersLoading(true);
-    setMembersError("");
-    try {
-      setMembers(await fetchMembers());
-    } catch (err) {
-      setMembersError(err.message || "Không thể tải danh sách thành viên.");
-    } finally {
-      setMembersLoading(false);
-    }
-  };
-
   useEffect(() => {
-    reloadMembers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (async () => {
+      const savedMembers = await storageGet("htx369_members_list", DEFAULT_MEMBERS);
+      setMembers(savedMembers);
+    })();
   }, []);
+
+  const persistMembersList = (newList) => {
+    setMembers(newList);
+    storageSet("htx369_members_list", newList);
+  };
 
   const filtered = bank.filter((q) => q.content.toLowerCase().includes(search.toLowerCase()));
   const filteredMembers = members.filter((m) => {
@@ -1673,17 +1525,13 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
     setShowMemberModal(true);
   };
 
-  const deleteMember = async (id) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa thành viên này khỏi danh sách quản lý?")) return;
-    try {
-      await deleteMemberApi(id);
-      setMembers((prev) => prev.filter((m) => m.id !== id));
-    } catch (err) {
-      alert(err.message || "Xóa thành viên thất bại.");
+  const deleteMember = (id) => {
+    if (confirm("Bạn có chắc chắn muốn xóa thành viên này khỏi danh sách quản lý?")) {
+      persistMembersList(members.filter((m) => m.id !== id));
     }
   };
 
-  const saveMember = async () => {
+  const saveMember = () => {
     if (!memberForm.name.trim() || !memberForm.email.trim()) {
       alert("Vui lòng nhập đầy đủ Tên thành viên và Email đăng nhập!");
       return;
@@ -1698,30 +1546,36 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
     const tax = memberForm.type === "phap_nhan" ? code : memberForm.taxCode;
     const isPassed = memberForm.status === "PASSED";
 
-    const payload = {
-      ...memberForm,
-      memberCode: code,
-      taxCode: tax,
-      name: memberForm.name.trim(),
-      email: memberForm.email.trim(),
-      examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
-    };
-
-    try {
-      if (editingMember) {
-        const existing = members.find((m) => m.id === editingMember);
-        payload.certId = isPassed ? (existing?.certId || `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`) : null;
-        const updated = await updateMember(editingMember, payload);
-        setMembers((prev) => prev.map((m) => (m.id === editingMember ? updated : m)));
-      } else {
-        payload.certId = isPassed ? `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}` : null;
-        const created = await createMember(payload);
-        setMembers((prev) => [created, ...prev]);
-      }
-      setShowMemberModal(false);
-    } catch (err) {
-      alert(err.message || "Lưu thành viên thất bại.");
+    if (editingMember) {
+      const updated = members.map((m) =>
+        m.id === editingMember
+          ? {
+              ...m,
+              ...memberForm,
+              memberCode: code,
+              taxCode: tax,
+              examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
+              certId: isPassed ? (m.certId || `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`) : null,
+            }
+          : m
+      );
+      persistMembersList(updated);
+    } else {
+      const newMember = {
+        id: "m_" + uid(),
+        ...memberForm,
+        memberCode: code,
+        taxCode: tax,
+        name: memberForm.name.trim(),
+        email: memberForm.email.trim(),
+        progressCount: isPassed ? 8 : 0,
+        examScore: isPassed ? (Number(memberForm.examScore) || 85) : null,
+        certId: isPassed ? `HTX369-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}` : null,
+        joinedDate: todayStr(),
+      };
+      persistMembersList([newMember, ...members]);
     }
+    setShowMemberModal(false);
   };
 
   const save = () => {
@@ -1812,18 +1666,8 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
             </button>
           </div>
 
-          {membersError && (
-            <div className="mb-3 p-3 rounded-lg text-xs flex items-center justify-between gap-3" style={{ background: t.incorrectSoft, color: t.incorrect }}>
-              <span>{membersError}</span>
-              <button onClick={reloadMembers} className="underline shrink-0">Thử lại</button>
-            </div>
-          )}
-          {membersLoading && (
-            <div className="text-xs py-6 text-center" style={{ color: t.inkSoft }}>Đang tải danh sách thành viên…</div>
-          )}
-
           <div className="space-y-2.5">
-            {!membersLoading && filteredMembers.map((m) => (
+            {filteredMembers.map((m) => (
               <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3 shadow-sm transition-all hover:border-black/20" style={{ borderColor: t.border, background: t.surface }}>
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-sm mt-0.5" style={{ background: m.type === "phap_nhan" ? t.navy : t.accent }}>
@@ -1887,7 +1731,7 @@ function AdminPanel({ t, bank, subjects, topics, onChange, progress }) {
               </div>
             ))}
 
-            {!membersLoading && filteredMembers.length === 0 && (
+            {filteredMembers.length === 0 && (
               <div className="text-center py-12 rounded-xl border text-sm" style={{ borderColor: t.border, background: t.surface, color: t.inkSoft }}>
                 Không tìm thấy thành viên HTX nào phù hợp.
               </div>

@@ -402,6 +402,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showChangePwModal, setShowChangePwModal] = useState(false);
+  const [showQuickCountModal, setShowQuickCountModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -509,10 +510,7 @@ export default function App() {
 
         {view === "dashboard" && (
           <Dashboard t={t} progress={progress} bank={bank} wrongCount={wrongIds.length} bookmarkCount={bookmarkIds.length}
-            onQuickStart={() => {
-              const htx = bank.filter((q) => q.subjectId === "htx369");
-              startQuiz("quick", shuffle(htx).slice(0, 20), { subjectId: "htx369" });
-            }}
+            onQuickStart={() => setShowQuickCountModal(true)}
             onPractice={() => {
               const htxSub = SUBJECTS.find((s) => s.id === "htx369");
               setSelSubject(htxSub);
@@ -594,6 +592,15 @@ export default function App() {
       {showChangePwModal && (
         <ChangePasswordModal t={t} onClose={() => setShowChangePwModal(false)}
           onChanged={() => { setShowChangePwModal(false); setUser(null); setShowAuthModal(true); }} />
+      )}
+
+      {showQuickCountModal && (
+        <QuickCountModal t={t} bank={bank} onClose={() => setShowQuickCountModal(false)}
+          onStart={(count) => {
+            const htx = bank.filter((q) => q.subjectId === "htx369");
+            startQuiz("quick", shuffle(htx).slice(0, count), { subjectId: "htx369" });
+            setShowQuickCountModal(false);
+          }} />
       )}
 
       {showCertificate && (
@@ -740,7 +747,7 @@ function Dashboard({ t, progress, bank, wrongCount, bookmarkCount, onQuickStart,
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
         <ActionCard t={t} title="Ôn luyện theo bài (Bài 1 -> 8)" desc="Xem đáp án & giải thích chi tiết cho trọn bộ 80 câu HTX 369" icon={BookOpen} onClick={onPractice} />
-        <ActionCard t={t} title="Luyện tập nhanh (20 câu)" desc="Rèn luyện phản xạ ngẫu nhiên từ ngân hàng 80 câu" icon={Zap} onClick={onQuickStart} />
+        <ActionCard t={t} title="Luyện tập nhanh" desc="Chọn số câu, rèn phản xạ ngẫu nhiên từ ngân hàng 80 câu" icon={Zap} onClick={onQuickStart} />
         <ActionCard t={t} title="Thi sát hạch bấm giờ (60 phút)" desc="Mô phỏng thi thực tế 80 câu, tính % điểm và cấp Giấy chứng nhận" icon={Target} onClick={onExam} />
         <ActionCard t={t} title={`Ngân hàng câu sai (${wrongCount})`} desc="Ôn lại những câu bạn từng chọn chưa chính xác" icon={XCircle} onClick={onWrong} />
       </div>
@@ -754,7 +761,7 @@ function Dashboard({ t, progress, bank, wrongCount, bookmarkCount, onQuickStart,
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: t.border, background: t.surface }}>
             {progress.history.slice(0, 5).map((h, i) => {
               const s = SUBJECTS.find((x) => x.id === h.subjectId);
-              const pct = h.total ? Math.round((h.score / h.total) * 100) : 0;
+              const pct = Math.round((h.score / h.total) * 100);
               return (
                 <div key={h.id} className="flex items-center justify-between px-4 py-3" style={{ borderTop: i ? `1px solid ${t.border}` : "none" }}>
                   <div>
@@ -1122,13 +1129,28 @@ function Modal({ t, onClose, children }) {
   );
 }
 
+/** Password input with a show/hide eye toggle. Same props as a plain <input>. */
+function PasswordInput({ t, value, onChange, placeholder, autoComplete, required = true }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input type={visible ? "text" : "password"} required={required} autoComplete={autoComplete} value={value} onChange={onChange} placeholder={placeholder}
+        className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
+      <button type="button" onClick={() => setVisible((v) => !v)} tabIndex={-1}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-black/5"
+        title={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>
+        {visible ? <EyeOff size={16} color={t.inkSoft} /> : <Eye size={16} color={t.inkSoft} />}
+      </button>
+    </div>
+  );
+}
+
 /* ============================== AUTH MODAL ============================== */
 function AuthModal({ t, onClose, onAuthSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -1184,14 +1206,8 @@ function AuthModal({ t, onClose, onAuthSuccess }) {
 
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu</label>
-          <div className="relative">
-            <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <PasswordInput t={t} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+            autoComplete={isRegister ? "new-password" : "current-password"} />
         </div>
 
         <button type="submit" disabled={loading} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm mt-2 disabled:opacity-50" style={{ background: t.accent }}>
@@ -1214,9 +1230,6 @@ function ChangePasswordModal({ t, onClose, onChanged }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -1261,38 +1274,17 @@ function ChangePasswordModal({ t, onClose, onChanged }) {
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu hiện tại</label>
-          <div className="relative">
-            <input type={showCurrent ? "text" : "password"} required autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowCurrent(!showCurrent)} title={showCurrent ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <PasswordInput t={t} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
         </div>
 
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Mật khẩu mới</label>
-          <div className="relative">
-            <input type={showNew ? "text" : "password"} required autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Tối thiểu 8 ký tự, có hoa/thường/số"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowNew(!showNew)} title={showNew ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <PasswordInput t={t} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Tối thiểu 8 ký tự, có hoa/thường/số" autoComplete="new-password" />
         </div>
 
         <div>
           <label className="text-xs font-semibold block mb-1" style={{ color: t.inkSoft }}>Xác nhận mật khẩu mới</label>
-          <div className="relative">
-            <input type={showConfirm ? "text" : "password"} required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••"
-              className="w-full text-sm rounded-lg border pl-3 pr-10 py-2 outline-none" style={{ borderColor: t.border, background: t.bg, color: t.ink }} />
-            <button type="button" onClick={() => setShowConfirm(!showConfirm)} title={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <PasswordInput t={t} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" autoComplete="new-password" />
         </div>
 
         <p className="text-[11px]" style={{ color: t.inkSoft }}>Sau khi đổi mật khẩu, mọi phiên đăng nhập (kể cả phiên hiện tại) sẽ bị đăng xuất vì lý do bảo mật.</p>
@@ -1305,9 +1297,39 @@ function ChangePasswordModal({ t, onClose, onChanged }) {
   );
 }
 
+/* ============================== QUICK PRACTICE COUNT MODAL ============================== */
+function QuickCountModal({ t, bank, onClose, onStart }) {
+  const total = bank.filter((q) => q.subjectId === "htx369").length;
+  const options = [];
+  for (let n = 10; n < total; n += 10) options.push(n);
+
+  const [count, setCount] = useState(Math.min(20, total));
+
+  return (
+    <Modal t={t} onClose={onClose}>
+      <div className="flex justify-between items-center mb-4">
+        <div style={{ fontFamily: serif }} className="text-xl font-bold">Luyện tập nhanh</div>
+        <button onClick={onClose} className="p-1 rounded hover:bg-black/5"><X size={16} color={t.inkSoft} /></button>
+      </div>
+
+      <label className="text-xs font-semibold block mb-1.5" style={{ color: t.inkSoft }}>Chọn số câu muốn luyện</label>
+      <select value={count} onChange={(e) => setCount(Number(e.target.value))}
+        className="w-full text-sm rounded-lg border px-3 py-2.5 outline-none mb-4"
+        style={{ borderColor: t.border, background: t.bg, color: t.ink }}>
+        {options.map((n) => <option key={n} value={n}>{n} câu</option>)}
+        <option value={total}>Làm hết ({total} câu)</option>
+      </select>
+
+      <button onClick={() => onStart(count)} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm" style={{ background: t.accent }}>
+        Bắt đầu · {count === total ? `Làm hết ${total} câu` : `${count} câu`}
+      </button>
+    </Modal>
+  );
+}
+
 /* ============================== CERTIFICATE MODAL ============================== */
 function CertificateModal({ t, result, user, onClose }) {
-  const pct = result.total ? Math.round((result.correctCount / result.total) * 100) : 0;
+  const pct = Math.round((result.correctCount / result.total) * 100);
   const dateStr = new Date().toLocaleDateString('vi-VN');
 
   return (
@@ -1380,7 +1402,7 @@ function CertificateModal({ t, result, user, onClose }) {
 /* ============================== RESULTS ============================== */
 function ResultsView({ t, result, user, onHome, onReviewWrong, onRetakeWrong, onOpenCert }) {
   const { correctCount, wrongCount, skippedCount, total, elapsed, perQuestion } = result;
-  const pct = total ? Math.round((correctCount / total) * 100) : 0;
+  const pct = Math.round((correctCount / total) * 100);
   const isPassed = pct >= 70;
 
   const byTopic = useMemo(() => {
@@ -1430,20 +1452,17 @@ function ResultsView({ t, result, user, onHome, onReviewWrong, onRetakeWrong, on
         <div className="mb-8 p-4 rounded-xl border" style={{ borderColor: t.border, background: t.surface }}>
           <div className="text-sm font-semibold mb-3" style={{ color: t.ink }}>Kết quả theo từng Bài học HTX 369</div>
           <div className="space-y-3">
-            {byTopic.map((b, i) => {
-              const tpPct = b.total ? Math.round((b.correct / b.total) * 100) : 0;
-              return (
-                <div key={i}>
-                  <div className="flex justify-between text-xs mb-1" style={{ color: t.inkSoft }}>
-                    <span className="font-medium">{b.name}</span>
-                    <span>{b.correct}/{b.total} ({tpPct}%)</span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: t.border }}>
-                    <div className="h-full rounded-full" style={{ width: `${tpPct}%`, background: t.accent }} />
-                  </div>
+            {byTopic.map((b, i) => (
+              <div key={i}>
+                <div className="flex justify-between text-xs mb-1" style={{ color: t.inkSoft }}>
+                  <span className="font-medium">{b.name}</span>
+                  <span>{b.correct}/{b.total} ({Math.round((b.correct / b.total) * 100)}%)</span>
                 </div>
-              );
-            })}
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: t.border }}>
+                  <div className="h-full rounded-full" style={{ width: `${(b.correct / b.total) * 100}%`, background: t.accent }} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
