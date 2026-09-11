@@ -11,7 +11,7 @@ function refreshCookieOptions() {
   return {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: "strict" as const,
+    sameSite: env.cookieSameSite,
     domain: env.cookieDomain,
     path: REFRESH_COOKIE_PATH,
     maxAge: env.refreshTokenTtlDays * 24 * 60 * 60 * 1000,
@@ -46,9 +46,10 @@ export const authController = {
   logout: asyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies?.[REFRESH_COOKIE];
     await authService.logout(token);
-    res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH, domain: env.cookieDomain });
+    res.clearCookie(REFRESH_COOKIE, refreshCookieOptions());
     res.status(204).send();
   }),
+
 
   forgotPassword: asyncHandler(async (req: Request, res: Response) => {
     const { devToken } = await authService.forgotPassword(req.body.email);

@@ -42,7 +42,12 @@ export const usersRepository = {
   async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
     await pool.query(`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`, [id, passwordHash]);
   },
+
+  async updatePasswordByEmail(email: string, passwordHash: string): Promise<void> {
+    await pool.query(`UPDATE users SET password_hash = $2, updated_at = now() WHERE LOWER(email) = LOWER($1)`, [email, passwordHash]);
+  },
 };
+
 
 export function toPublicUser(u: UserRow) {
   return {
